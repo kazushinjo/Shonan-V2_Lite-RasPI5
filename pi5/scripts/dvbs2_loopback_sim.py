@@ -4,9 +4,15 @@
 使い方: dvbs2_loopback_sim.py MODCOD ESN0_DB [N_FRAMES]
   MODCOD は 16APSK-S_2/3 のようにGUIと同じ表記。gr-dvbs2rx(パッチ適用済み)とgr-dtvが必要。
   ロック後に受信したTSパケットに誤り・抜け・順序違いが無ければPASS。
-  LDPC復号器は数フレーム単位でまとめて処理するため、最後の数フレームは出てこない(N_FRAMESは100程度)。
+  LDPC復号器は数フレーム単位でまとめて処理するため、最後の数フレームは出てこない。
+  環境変数:
+    SIM_CFO=2e-4             周波数ずれ(cycle/sample)
+    SIM_SKIP_FRAMES=70       最初のNフレーム(周波数同期の立ち上がり)を判定から除く
+    SIM_FREQ_EST_PERIOD=30   plsync_ccの粗い周波数推定の間隔(フレーム)
+    SIM_ROT_MAX_BUF=8192     rotator_ccの出力バッファ上限
   結果は docs/apsk_simulation.md を参照。
 """
+import os
 import sys
 
 import numpy as np
@@ -59,10 +65,13 @@ def rx(modulation, rate, samples):
     src = blocks.vector_source_c(samples.tolist(), False)
     agc = analog.agc_cc(1e-5, 1.0, 1.0, 65536)
     rotator = dvbs2rx.rotator_cc(0.0, True)
+    if os.environ.get("SIM_ROT_MAX_BUF"):
+        rotator.set_max_output_buffer(int(os.environ["SIM_ROT_MAX_BUF"]))
     symbol_sync = dvbs2rx.symbol_sync_cc(SPS, 0.001, 1.0, ROLLOFF, 5, 128, 0)
     target_pls = dvbs2rx.dvbs2_pls(modulation, rate, "normal", True)
     lo, hi = dvbs2rx.pls_filter(target_pls)
-    plsync = dvbs2rx.plsync_cc(0, 30, SPS, 0, False, False, lo, hi)
+    plsync = dvbs2rx.plsync_cc(0, int(os.environ.get("SIM_FREQ_EST_PERIOD", "30")), SPS, 0,
+                               False, False, lo, hi)
     demapper = dvbs2rx.xfecframe_demapper_cb(framesize, code_rate, constellation)
     ldpc = dvbs2rx.ldpc_decoder_bb(dvbs2rx.STANDARD_DVBS2, framesize, code_rate,
                                    constellation, dvbs2rx.OM_MESSAGE, dvbs2rx.INFO_OFF, 25, 0)
@@ -95,7 +104,7 @@ def main():
     rng = np.random.default_rng(7)
     p_sig = np.mean(np.abs(samples) ** 2)
     n = np.arange(len(samples))
-    cfo = 2e-4  # cycles/sample
+    cfo = float(os.environ.get("SIM_CFO", "2e-4"))  # cycles/sample
     y = 0.3 * samples * np.exp(1j * (2 * np.pi * cfo * n + 0.7))
     sigma2 = (0.3 ** 2) * p_sig * SPS / (10 ** (esn0_db / 10))
     y = y + np.sqrt(sigma2 / 2) * (rng.standard_normal(len(y)) + 1j * rng.standard_normal(len(y)))
@@ -105,6 +114,14 @@ def main():
     index = {bytes(p): i for i, p in enumerate(pkts)}
     n_out = len(out) // TS_PKT
     found = [index.get(bytes(out[i * TS_PKT:(i + 1) * TS_PKT])) for i in range(n_out)]
+    # Optionally ignore the acquisition period: packets sent in the first SIM_SKIP_FRAMES
+    # frames (the frequency synchronizer needs up to two coarse estimation periods).
+    skip_pkts = int(int(os.environ.get("SIM_SKIP_FRAMES", "0")) * 64800 * num / den / 8 / TS_PKT)
+    if skip_pkts:
+        found = [i for i in found if i is None or i >= skip_pkts]
+        while found and found[0] is None:
+            found.pop(0)
+        n_out = len(found)
     good = [i for i in found if i is not None]
     # Packets that match nothing before the first good one are the output of the
     # acquisition (first frames after the PL lock); only count them after that.
