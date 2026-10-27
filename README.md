@@ -1,4 +1,4 @@
-# Shonan for RasPI5
+# Shonan-V2_Lite for RasPI5
 
 Raspberry Pi 5 + ADALM-PlutoによるDVB-S2 DATV送受信タッチGUIシステム。
 本体は`pi5/`配下(Python/PyQt5、eglfs直描画)。
@@ -20,13 +20,16 @@ The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
 
 ## 主な機能 / Features
 
-- **送信**: 周波数・シンボルレート(333〜2000 kS/s)・FEC・変調方式(QPSK/8PSK)・TX出力を画面で設定し、
-  Pluto内蔵の`pluto_dvb`でDVB-S2送信する。FECは変調方式ごとに実際に動作する組み合わせだけを選べる
-  (QPSK: 1/2・3/5・8/9、8PSK: 3/5・8/9)。送信映像はフルHD(1920x1080)固定。
+- **送信**: 周波数・シンボルレート(333〜2000 kS/s)・FEC・変調方式(QPSK/8PSK/16APSK/32APSK)・TX出力を画面で設定し、
+  Pluto内の`pluto_dvb`でDVB-S2送信する。FECはDVB-S2の全28組み合わせから選べる
+  (QPSK: 1/4〜9/10、8PSK: 3/5〜9/10、16APSK: 2/3〜9/10、32APSK: 3/4〜9/10)。
+  無印Pluto(datvplutofrm v0.39-dirty、ARMのソフト変調)とPluto+(Shonan版ファーム、FPGAの変調回路)の
+  どちらでも同じ操作で送信できる。送信映像はフルHD(1920x1080)固定。
 - **映像ソース**: USBカメラ・画像ファイル(静止画を反復送信)・テストパターンから選ぶ。カメラ選択時は
   「撮影」ボタンで静止画(JPG、`~/Pictures/Shonan_Lite/`)を撮り、そのまま送信画像に使える。
   コールサイン・備考を文字サイズ・文字色を選んで映像へ焼き込める(日時も表示)。
-- **受信**: GNU Radio(gr-dvbs2rx)によるPi 5上での復調。LOCK状態・ビットレート・パケット数/エラー数を表示。
+- **受信**: GNU Radio(gr-dvbs2rx)によるPi 5上での復調。16APSK/32APSKは本リポジトリのパッチ
+  (`pi5/docs/patches/gr-dvbs2rx_apsk.patch`、install.shが自動で当てる)で受信できるようにしている。LOCK状態・ビットレート・パケット数/エラー数を表示。
 - **RSSI測定**: 周波数を掃引して受信レベルをグラフ表示する。オンデバイス復調OFF(通常運用)では
   相手局の電波を測り、ON(テスト用)では自局もテストパターンで自動送信して自分の信号を測る。
 - **プリセット**: 現在の設定を5件まで登録・呼び出し(プリセット1は未登録の間RFループバック試験用)。
@@ -39,14 +42,16 @@ The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
 
 <!-- English -->
 
-- **Transmit**: Set the frequency, symbol rate (333–2000 kS/s), FEC, modulation (QPSK/8PSK) and TX power on screen,
-  and transmit DVB-S2 with `pluto_dvb` running inside the Pluto. Only FEC rates that actually work with each
-  modulation can be selected (QPSK: 1/2, 3/5, 8/9; 8PSK: 3/5, 8/9). The transmitted video is fixed at Full HD (1920x1080).
+- **Transmit**: Set the frequency, symbol rate (333–2000 kS/s), FEC, modulation (QPSK/8PSK/16APSK/32APSK) and TX power on screen,
+  and transmit DVB-S2 with `pluto_dvb` inside the Pluto. All 28 DVB-S2 MOD-CODs can be selected
+  (QPSK: 1/4-9/10; 8PSK: 3/5-9/10; 16APSK: 2/3-9/10; 32APSK: 3/4-9/10). A plain Pluto (datvplutofrm v0.39-dirty,
+  software modulation on the ARM) and a Pluto+ (Shonan firmware, modulator in the FPGA) are operated the same way. The transmitted video is fixed at Full HD (1920x1080).
 - **Video source**: Choose from a USB camera, an image file (a still image transmitted repeatedly) or a test pattern.
   With the camera selected, the "Capture" button takes a still image (JPG, `~/Pictures/Shonan_Lite/`) that can be
   used directly as the transmit image. A callsign and a note can be burned into the video with a selectable
   text size and color (the date and time are shown as well).
-- **Receive**: Demodulation on the Pi 5 with GNU Radio (gr-dvbs2rx). Shows LOCK status, bit rate and packet/error counts.
+- **Receive**: Demodulation on the Pi 5 with GNU Radio (gr-dvbs2rx). 16APSK/32APSK reception is added by this
+  repository's patch (`pi5/docs/patches/gr-dvbs2rx_apsk.patch`, applied automatically by install.sh). Shows LOCK status, bit rate and packet/error counts.
 - **RSSI measurement**: Sweeps the frequency and graphs the received level. With on-device demodulation OFF
   (normal operation) it measures the other station's signal; with it ON (for testing) the station also transmits
   a test pattern automatically and measures its own signal.
