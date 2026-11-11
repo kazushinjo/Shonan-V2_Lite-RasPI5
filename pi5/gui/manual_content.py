@@ -48,6 +48,7 @@ MANUAL_SECTIONS = [
     ("3. 設定画面", [
         ("表示言語", "画面の表示言語を「日本語」「English」から選びます。選ぶとすぐに全画面の表示が切り替わり、設定は保存されます。"),
         ("送信先（Pluto Tx）", "PlutoのIPアドレスを入力します。UDP-TSポートは8282固定(Pluto側)です。"),
+        ("Pluto 情報", "右列の「バージョン」「セッティング」「AD9361」を押すと、送信先のPlutoからファームの版・型式等、Web UIのsettings.txt(送信時にアプリが書き込む値)、AD9361の周波数・ゲイン等17項目を読み取り、別ウィンドウに表示します(「閉じる」で戻ります)。読み取りのみで、Plutoには何も書き込みません。読めない場合は理由をボタンの下に赤字で表示します。"),
         ("送信音声の入力", "送信する音声を「カメラ音声」(USBカメラ内蔵マイク)か「USBオーディオ」(外付けマイク等)から選びます。映像ソース(カメラ/カラーバー/静止画)に関係なく、選んだ入力の音声を送ります。どちらもモノラルで送信します。選んだ側のデバイスが見つからない場合は無音で送信します。"),
         ("PA/LNA制御", "RasPI5からのPTT ON信号でPA・LNAの送受信切替を制御できます。送信中はPi 5のGPIO21(40番ピン、GNDは39番ピン)がHIGH(3.3V)、受信中はLOWになります。Shonan_Liteの送信とLangstone V3の送信(Langstone標準のTx Output)のどちらでも同じピンに出力されます。GPIO21は3.3Vロジックで電流を取れないため、トランジスタやリレードライバ等でバッファしてからPA・LNA(同軸リレー等)を駆動してください。"),
         ("オンデバイス復調",
@@ -187,6 +188,7 @@ MANUAL_SECTIONS_EN = [
     ("3. Settings Screen", [
         ("Display Language", "Choose the display language from \"日本語\" (Japanese) and \"English\". All screens switch immediately and the choice is saved."),
         ("Destination (Pluto Tx)", "Enter the Pluto's IP address. The UDP-TS port is fixed at 8282 (on the Pluto side)."),
+        ("Pluto Info", "Pressing \"Version\", \"Settings\" or \"AD9361\" in the right column reads the firmware version and model of the Pluto at the TX destination, the Web UI settings.txt (the values this app writes on TX), or 17 AD9361 values such as frequencies and gains, and shows them in a separate window (\"Close\" returns). It only reads and writes nothing to the Pluto. If it cannot read, the reason is shown in red below the buttons."),
         ("TX Audio Input", "Choose the audio to transmit: \"Camera\" (the USB camera's built-in microphone) or \"USB Audio\" (an external microphone, etc.). The selected input is transmitted regardless of the video source (camera / color bar / still image). Both are transmitted in mono. If the selected device is not found, silence is transmitted."),
         ("PA/LNA control", "The PA and LNA can be switched between TX and RX by the PTT ON signal from the RasPI5. GPIO21 on the Pi 5 (pin 40; GND on pin 39) is HIGH (3.3 V) while transmitting and LOW while receiving. The same pin is driven both when transmitting with Shonan_Lite and when transmitting with Langstone V3 (Langstone's standard Tx Output). GPIO21 is a 3.3 V logic output that cannot supply current, so buffer it with a transistor, relay driver or similar before driving the PA and LNA (coax relays, etc.)."),
         ("On-device Demodulation",

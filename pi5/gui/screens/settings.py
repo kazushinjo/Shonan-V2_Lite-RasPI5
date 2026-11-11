@@ -5,12 +5,14 @@ from __future__ import annotations
 
 from settings_store import normalize_pluto_host
 import subprocess
+import threading
 from pathlib import Path
 
 from PyQt5 import QtCore, QtWidgets
 
 from settings_store import BAND_PROFILES
-from i18n import set_language, tr
+from i18n import is_english, set_language, tr
+import pluto_info
 from widgets import SettingsSubScreen, confirm_dialog, error_dialog
 
 
@@ -21,6 +23,9 @@ _ASSETS = (Path(__file__).resolve().parents[2] / "assets").as_posix()
 
 
 class SettingsScreen(SettingsSubScreen):
+    # 「Pluto 情報」の読み取り結果(別スレッドから受け取る)。(種類, 行の並び or エラー文字列)
+    _pluto_info_ready = QtCore.pyqtSignal(str, object)
+
     def __init__(self, main_window):
         super().__init__("設定 / Config", lambda: main_window.navigate_to("home"))
         self.main_window = main_window
@@ -179,6 +184,31 @@ class SettingsScreen(SettingsSubScreen):
         self.iio_preflight_checkbox.toggled.connect(
             self._on_iio_preflight_toggled)
         right.addWidget(self.iio_preflight_checkbox)
+
+        # 「Pluto 情報」(iPad/Mac版・Pi4版の設定画面と同じ内容)。どれも読み取りのみで、
+        # Plutoには何も書き込まない。★この画面は1画面に収める作りのため、読み取った
+        # 結果(AD9361は17行)はスクロールできる別ウィンドウで表示する。
+        right.addWidget(self._section_label(tr("Pluto 情報", "Pluto Info")))
+        info_buttons = QtWidgets.QHBoxLayout()
+        info_buttons.setSpacing(8)
+        self._pluto_info_buttons: dict[str, QtWidgets.QPushButton] = {}
+        for kind, label in (("version", tr("バージョン", "Version")),
+                            ("settings", tr("セッティング", "Settings")),
+                            ("ad9361", "AD9361")):
+            button = QtWidgets.QPushButton(label)
+            button.setFixedHeight(_FIELD_HEIGHT)
+            button.setStyleSheet("min-height: 0px; padding: 4px 10px;")
+            button.clicked.connect(lambda _checked, k=kind: self._load_pluto_info(k))
+            info_buttons.addWidget(button)
+            self._pluto_info_buttons[kind] = button
+        right.addLayout(info_buttons)
+        self.pluto_info_status = QtWidgets.QLabel(tr(
+            "送信先のPlutoから読み取ります(書き込みはしません)。",
+            "Reads from the Pluto at the TX destination (read only)."))
+        self.pluto_info_status.setWordWrap(True)
+        self.pluto_info_status.setStyleSheet("color: #cccccc; font-size: 13px;")
+        right.addWidget(self.pluto_info_status)
+        self._pluto_info_ready.connect(self._show_pluto_info)
         right.addStretch(1)
         # スイッチ風の見た目に合わせ、タッチ後に文字へ点線のフォーカス枠が出ないようにする。
         for checkbox in (self.on_device_checkbox, self.iio_preflight_checkbox):
@@ -198,6 +228,84 @@ class SettingsScreen(SettingsSubScreen):
         self.iio_preflight_checkbox.setChecked(settings.iio_preflight_enabled)
         self.iio_preflight_checkbox.blockSignals(False)
         self.datetime_edit.setDateTime(QtCore.QDateTime.currentDateTime())
+
+    _PLUTO_INFO_TITLES = {
+        "version": ("Pluto 情報: バージョン", "Pluto Info: Version"),
+        "settings": ("Pluto 情報: セッティング (settings.txt)", "Pluto Info: Settings (settings.txt)"),
+        "ad9361": ("Pluto 情報: AD9361", "Pluto Info: AD9361"),
+    }
+
+    def _load_pluto_info(self, kind: str) -> None:
+        for button in self._pluto_info_buttons.values():
+            button.setEnabled(False)
+        self.pluto_info_status.setStyleSheet("color: #cccccc; font-size: 13px;")
+        self.pluto_info_status.setText(tr("読み取り中...", "Reading..."))
+        settings = self.main_window.settings
+        uri, host, english = settings.pluto_uri, settings.pluto_host(), is_english()
+
+        def work() -> None:
+            try:
+                if kind == "version":
+                    rows = pluto_info.read_version(uri, english)
+                elif kind == "settings":
+                    rows = pluto_info.read_settings_txt(host)
+                else:
+                    rows = pluto_info.read_ad9361(uri, english)
+                self._pluto_info_ready.emit(kind, rows)
+            except pluto_info.PlutoInfoError as exc:
+                self._pluto_info_ready.emit(kind, str(exc))
+            except Exception as exc:  # 想定外でもボタンが押せないままにならないようにする
+                self._pluto_info_ready.emit(kind, f"{type(exc).__name__}: {exc}")
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_pluto_info(self, kind: str, result) -> None:
+        for button in self._pluto_info_buttons.values():
+            button.setEnabled(True)
+        if isinstance(result, str):
+            self.pluto_info_status.setStyleSheet("color: #ff6060; font-size: 13px;")
+            self.pluto_info_status.setText(tr("取得できませんでした: ", "Failed: ") + result)
+            return
+        self.pluto_info_status.setStyleSheet("color: #cccccc; font-size: 13px;")
+        self.pluto_info_status.setText(tr(
+            "送信先のPlutoから読み取ります(書き込みはしません)。",
+            "Reads from the Pluto at the TX destination (read only)."))
+        ja, en = self._PLUTO_INFO_TITLES[kind]
+        self._pluto_info_dialog(tr(ja, en), result)
+
+    def _pluto_info_dialog(self, title: str, rows) -> None:
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setModal(True)
+        screen = QtWidgets.QApplication.primaryScreen().availableGeometry()
+        dialog.resize(min(760, screen.width() - 20), min(440, screen.height() - 20))
+        layout = QtWidgets.QVBoxLayout(dialog)
+        heading = QtWidgets.QLabel(f"{title}   {self.main_window.settings.pluto_host()}")
+        heading.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(heading)
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        table = QtWidgets.QWidget()
+        grid = QtWidgets.QGridLayout(table)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(4)
+        grid.setColumnStretch(1, 1)
+        for row, (label, value) in enumerate(rows):
+            name = QtWidgets.QLabel(label)
+            name.setStyleSheet("color: #aaaaaa;")
+            text = QtWidgets.QLabel(value if value else "-")
+            text.setWordWrap(True)
+            text.setStyleSheet("font-family: monospace;")
+            grid.addWidget(name, row, 0, QtCore.Qt.AlignTop)
+            grid.addWidget(text, row, 1)
+        grid.setRowStretch(len(rows), 1)
+        scroll.setWidget(table)
+        layout.addWidget(scroll, 1)
+        close_btn = QtWidgets.QPushButton(tr("閉じる", "Close"))
+        close_btn.setFixedHeight(44)
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        dialog.exec_()
 
     @staticmethod
     def _section_label(text: str) -> QtWidgets.QLabel:
