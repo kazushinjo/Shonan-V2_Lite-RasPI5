@@ -1,11 +1,9 @@
 """Boot-time application selector for the Raspberry Pi 5 touch display."""
 from __future__ import annotations
 
-import http.client
 import os
 import subprocess
 import sys
-import urllib.error
 from pathlib import Path
 
 
@@ -32,7 +30,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PyQt5 import QtCore, QtWidgets
 
 import settings_store
-from backend import PTT_CHANNEL_POWER, _send_ptt_channel_state
 
 
 MARKER = Path.home() / ".pi5_boot_mode_langstone"
@@ -184,16 +181,6 @@ class BootMenu(QtWidgets.QWidget):
         if langstone:
             MARKER.touch()
             unit = "langstone.service"
-            # ★Langstone V3自身は12V電源(GPIO26)に触れないため、起動選択時に
-            # ここで明示的にONを送っておく(home.py側のアプリ内Langstoneボタンと
-            # 同じ経路。起動メニューから直接Langstoneを選んだ場合はhome.pyの
-            # 処理を経由しないため、ここでも送信しないとPA電源が入らない)。
-            host = settings_store.load().ptt_controller_host
-            if host:
-                try:
-                    _send_ptt_channel_state(host, PTT_CHANNEL_POWER, "on")
-                except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
-                    print(f"[MCU1] GPIO26 ON通知に失敗しました(起動メニュー): {exc}", flush=True)
         else:
             MARKER.unlink(missing_ok=True)
             unit = "shonan-gui.service"

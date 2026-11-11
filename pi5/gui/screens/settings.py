@@ -3,7 +3,7 @@ Wi-Fi案内・ビットレート・Pluto接続先・オンデバイス復調状�
 """
 from __future__ import annotations
 
-from settings_store import normalize_pluto_host, normalize_ptt_controller_host
+from settings_store import normalize_pluto_host
 import subprocess
 from pathlib import Path
 
@@ -58,8 +58,7 @@ class SettingsScreen(SettingsSubScreen):
         )
         content_layout.addWidget(panel)
         # ★800x480画面でスクロールせず1画面に収まるよう、左右2列に分けて各欄の高さを詰める
-        # (以前は1列で縦に長く、ESP32以降がスクロールしないと見えなかった)。
-        # 左列: 表示言語・送信先・システム日時、右列: ESP32・オンデバイス復調・受信診断。
+        # 左列: 表示言語・送信先・システム日時、右列: オンデバイス復調・受信診断。
         columns = QtWidgets.QHBoxLayout(panel)
         columns.setContentsMargins(18, 8, 18, 10)
         columns.setSpacing(24)
@@ -161,29 +160,6 @@ class SettingsScreen(SettingsSubScreen):
         left.addWidget(self.set_datetime_btn)
         left.addStretch(1)
 
-        right.addWidget(self._section_label(
-            tr("PA_Power/PTTコントローラ (ESP32)", "PA_Power/PTT Controller (ESP32)")))
-        self.use_ptt_controller_checkbox = QtWidgets.QCheckBox(
-            tr("ESP32 W5500を使用する", "Use ESP32 W5500"))
-        self.use_ptt_controller_checkbox.setFixedHeight(_FIELD_HEIGHT)
-        self.use_ptt_controller_checkbox.toggled.connect(self._on_use_ptt_controller_toggled)
-        right.addWidget(self.use_ptt_controller_checkbox)
-        self.ptt_controller_ip_edit = QtWidgets.QLineEdit()
-        self.ptt_controller_ip_edit.setFixedHeight(_FIELD_HEIGHT)
-        self.ptt_controller_ip_edit.setPlaceholderText(tr("未使用の場合は空欄のまま", "Leave empty if not used"))
-        self.ptt_controller_ip_edit.editingFinished.connect(self._save_ptt_controller_ip)
-        right.addWidget(self.ptt_controller_ip_edit)
-        ptt_note = QtWidgets.QLabel(tr(
-            "ESP32+W5500ボードのIPアドレス。送信開始/終了でPTTを、"
-            "アプリ起動/終了で12V電源を自動切替します。",
-            "IP of the ESP32 + W5500 board. PTT follows TX start/stop and "
-            "the 12 V power follows app start/exit."
-        ))
-        # ★長い説明文(特に英語)が折り返されずに画面の右端で切れていたため、折り返す。
-        ptt_note.setWordWrap(True)
-        ptt_note.setStyleSheet("color: #cccccc; font-size: 13px;")
-        right.addWidget(ptt_note)
-
         right.addWidget(self._section_label(tr("オンデバイス復調", "On-device Demodulation")))
         self.on_device_checkbox = QtWidgets.QCheckBox(tr("オンデバイス復調 (GNU Radio)", "On-device demodulation (GNU Radio)"))
         self.on_device_checkbox.setFixedHeight(_FIELD_HEIGHT)
@@ -205,8 +181,7 @@ class SettingsScreen(SettingsSubScreen):
         right.addWidget(self.iio_preflight_checkbox)
         right.addStretch(1)
         # スイッチ風の見た目に合わせ、タッチ後に文字へ点線のフォーカス枠が出ないようにする。
-        for checkbox in (self.use_ptt_controller_checkbox, self.on_device_checkbox,
-                         self.iio_preflight_checkbox):
+        for checkbox in (self.on_device_checkbox, self.iio_preflight_checkbox):
             checkbox.setFocusPolicy(QtCore.Qt.NoFocus)
         settings = self.main_window.settings
         index = self.band_combo.findData(settings.selected_band)
@@ -216,11 +191,6 @@ class SettingsScreen(SettingsSubScreen):
             self.band_combo.blockSignals(False)
         self._update_band_info(settings.selected_band)
         self.pluto_ip_edit.setText(settings.pluto_host())
-        self.ptt_controller_ip_edit.setText(settings.ptt_controller_host)
-        self.use_ptt_controller_checkbox.blockSignals(True)
-        self.use_ptt_controller_checkbox.setChecked(settings.use_ptt_controller)
-        self.use_ptt_controller_checkbox.blockSignals(False)
-        self.ptt_controller_ip_edit.setEnabled(settings.use_ptt_controller)
         self.on_device_checkbox.blockSignals(True)
         self.on_device_checkbox.setChecked(settings.use_on_device_demod)
         self.on_device_checkbox.blockSignals(False)
@@ -289,22 +259,6 @@ class SettingsScreen(SettingsSubScreen):
         self.main_window.save_settings()
         # Plutoを替えたら、変調方式の選択肢(8PSKまで/32APSKまで)を調べ直す。
         self.main_window.refresh_pluto_capability()
-
-    def _save_ptt_controller_ip(self) -> None:
-        value = self.ptt_controller_ip_edit.text().strip()
-        try:
-            host = normalize_ptt_controller_host(value)
-        except ValueError as exc:
-            self.ptt_controller_ip_edit.setText(self.main_window.settings.ptt_controller_host)
-            error_dialog(self, tr("PTTコントローラ接続先エラー", "PTT Controller Destination Error"), str(exc))
-            return
-        self.main_window.settings.ptt_controller_host = host
-        self.main_window.save_settings()
-
-    def _on_use_ptt_controller_toggled(self, checked: bool) -> None:
-        self.ptt_controller_ip_edit.setEnabled(checked)
-        self.main_window.settings.use_ptt_controller = checked
-        self.main_window.save_settings()
 
     def _on_on_device_toggled(self, checked: bool) -> None:
         if checked:

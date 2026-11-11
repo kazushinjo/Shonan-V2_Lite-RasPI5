@@ -560,21 +560,8 @@ def _push_pluto_settings(settings: AppSettings, lo_hz: float) -> None:
     raise last_error
 
 
-def _send_ptt_request(host: str, state: str) -> None:
-    """PA_Power/PTTコントローラ(ESP32+W5500、hardware/W5500_PA_PTT_Control)へ
-    TX開始/終了を通知する(`GET /tx?state=on|off`)。
-
-    ESP32側はこのリクエストのハンドラ内でPTT(GPIO27)のON/OFFのみを行う
-    (12V電源には触れない)。未接続・応答なしの場合は例外をそのまま送出する
-    (呼び出し側でログのみに握りつぶし、TX本体の動作は妨げない)。
-    """
-    url = f"http://{host}/tx?state={state}"
-    urllib.request.urlopen(url, timeout=1.5).close()
-
-
 # Pi5本体のTX出力GPIO。Langstone V3のTx Output(GPIO21=物理40番ピン、送信中HIGH)と
-# 同じピンに揃え、ESP32+W5500(PA_Power/PTTコントローラ)なしでもPA/LNA切替用の
-# PTT ON信号を取り出せるようにする。
+# 同じピンに揃え、PA/LNA切替用のPTT ON信号を取り出せるようにする。
 PI5_TX_GPIO = 21
 
 
@@ -589,23 +576,6 @@ def _set_pi5_tx_gpio(on: bool) -> None:
         ["pinctrl", "set", str(PI5_TX_GPIO), "op", "dh" if on else "dl"],
         check=True, timeout=2, capture_output=True,
     )
-
-
-# ESP32ファームウェア(hardware/W5500_PA_PTT_Control.ino)のPIN_OUTインデックスに対応。
-PTT_CHANNEL_POWER = 0  # GPIO26: 12V電源(2SJ334ハイサイドスイッチ)
-PTT_CHANNEL_PTT = 1    # GPIO27: PTT
-
-
-def _send_ptt_channel_state(host: str, idx: int, state: str) -> None:
-    """PA_Power/PTTコントローラ(ESP32+W5500)の個別チャンネルを明示的にON/OFFする
-    (`GET /ch?idx=<idx>&state=on|off`)。
-
-    Shonan_Lite-RasPI5(pi5/gui)アプリ本体の起動/終了に連動したGPIO26(12V電源、
-    idx=PTT_CHANNEL_POWER)制御に使う。TX/RX切替(`_send_ptt_request()`)とは独立した経路。
-    未接続・応答なしの場合は例外をそのまま送出する(呼び出し側でログのみに握りつぶす)。
-    """
-    url = f"http://{host}/ch?idx={idx}&state={state}"
-    urllib.request.urlopen(url, timeout=1.5).close()
 
 
 def _terminate_process_group(process: QtCore.QProcess, sig: int) -> None:
@@ -791,11 +761,6 @@ class TxController(QtCore.QObject):
                 _set_pi5_tx_gpio(True)
             except (OSError, subprocess.SubprocessError) as exc:
                 self.log_line.emit(f"[PTT] Pi5 GPIO{PI5_TX_GPIO}のHIGH出力に失敗しました: {exc}")
-            if settings.active_ptt_controller_host():
-                try:
-                    _send_ptt_request(settings.active_ptt_controller_host(), "on")
-                except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
-                    self.log_line.emit(f"[PTT] ESP32への送信開始通知に失敗しました: {exc}")
         audio_args, audio_message, self._tx_audio_device = _audio_input_args(settings)
         self._apply_tx_audio_volume(settings)
         self.log_line.emit(audio_message)
@@ -814,18 +779,13 @@ class TxController(QtCore.QObject):
     def stop(self) -> None:
         was_running = self.is_running()
         self._should_be_running = False
-        # ★Pi5 GPIOはESP32通知と違いローカルで軽いため、起動途中で失敗した場合も
+        # ★Pi5 GPIOはローカルで軽いため、起動途中で失敗した場合も
         # HIGHのまま残さないよう、送信中かどうかにかかわらずLOWへ戻す。
         try:
             _set_pi5_tx_gpio(False)
         except (OSError, subprocess.SubprocessError) as exc:
             if was_running:
                 self.log_line.emit(f"[PTT] Pi5 GPIO{PI5_TX_GPIO}のLOW出力に失敗しました: {exc}")
-        if was_running and self._last_settings and self._last_settings.active_ptt_controller_host():
-            try:
-                _send_ptt_request(self._last_settings.active_ptt_controller_host(), "off")
-            except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
-                self.log_line.emit(f"[PTT] ESP32への送信終了通知に失敗しました: {exc}")
         if not was_running:
             return
         # ffmpegを直接起動している(setsid/bash -cのパイプ構成をやめた)ため、QProcessの

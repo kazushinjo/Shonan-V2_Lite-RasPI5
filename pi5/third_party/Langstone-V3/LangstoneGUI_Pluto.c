@@ -29,11 +29,6 @@
 
 char plutoip[30];
 
-// ★Shonan_Lite-pi5統合版パッチ(pi4版から移植): PA_Power/PTTコントローラ
-// (ESP32+W5500、hardware/W5500_PA_PTT_Control)のIPアドレス。run_pluto起動
-// スクリプトが環境変数PTT_CONTROLLER_HOSTとして設定画面のptt_controller_host
-// を渡す。空文字なら連携しない(未接続環境でもハードウェアPTTの動作に影響しない)。
-char pttControllerHost[64] = "";
 
 void displayFreqTTF(double fr);
 
@@ -388,16 +383,6 @@ int main(int argc, char* argv[])
   strcat(plutoip,penv);
 
   printf("plutoip = %s\n",plutoip);
-
-  // ★Shonan_Lite-pi5統合版パッチ(pi4版から移植): PA_Power/PTTコントローラの
-  // IPアドレス(run_pluto起動スクリプトがsettings.jsonのptt_controller_host
-  // を環境変数経由で渡す)。未設定/空文字なら連携しない。
-  char * pttEnv = getenv("PTT_CONTROLLER_HOST");
-  if(pttEnv!=NULL)
-    {
-      strncpy(pttControllerHost,pttEnv,sizeof(pttControllerHost)-1);
-      pttControllerHost[sizeof(pttControllerHost)-1]='\0';
-    }
 
   startGNURadio();
    
@@ -1432,22 +1417,6 @@ void initGPIO(void)
   lastKey=1;
 }
 
-// ★Shonan_Lite-pi5統合版パッチ(pi4版から移植): ハードウェアPTTスイッチの
-// ON/OFFをPA_Power/PTTコントローラ(ESP32+W5500)へ中継する。GUIのメイン
-// ループから呼ばれるため、ESP32が未接続/無応答でもGUIが固まらないよう
-// curlをバックグラウンド起動する(`GET /tx?state=on|off`、Python版
-// backend.pyの_send_ptt_request()と同じ経路)。応答は確認しない(投げっぱなし)。
-void notifyEspPtt(int state)
-{
-  char cmd[160];
-  if(pttControllerHost[0]=='\0') return;
-  if(state && bandRxOnly[band]) return;   // 受信専用バンドではPA/リレーを送信に切り替えない
-  snprintf(cmd,sizeof(cmd),
-    "curl -s -m 1 \"http://%s/tx?state=%s\" >/dev/null 2>&1 &",
-    pttControllerHost, state ? "on" : "off");
-  system(cmd);
-}
-
 void processGPIO(void)
 {
 int p1=1;
@@ -1464,7 +1433,6 @@ int k1=1;
               ptt=1;
               if(ptts==1) setPtts(0);                       //turn off the touchscreen PTT.
               setTx(ptt|ptts);
-              notifyEspPtt(1);
             }
         }
      else
@@ -1473,7 +1441,6 @@ int k1=1;
             {
               ptt=0;
               setTx(ptt|ptts);
-              notifyEspPtt(0);
             }
         }
 
@@ -2149,8 +2116,7 @@ if(buttonTouched(funcButtonsX+buttonSpaceX*5,funcButtonsY))    //Button 6 = BEAC
          clearScreen();
          writeConfig();
          // ★Shonan_Lite-pi5統合版パッチ(切替時間の短縮): 以前はここでPluto+を
-         // rebootし、PA_Power/PTTコントローラの12V電源(Pluto+を含む)もOFFに
-         // していたが、切替のたびに数十秒かかるためやめた。実機試験の結果、
+         // rebootしていたが、切替のたびに数十秒かかるためやめた。実機試験の結果、
          // Pluto+を再起動しなくてもDATV側は正常に動作すること、ただし
          // Langstoneは受信中に送信LO(altvoltage1)をpowerdownしたまま終了し、
          // そのままではDATV送信の電波が出ないことを確認した。そこで送信LOだけを
@@ -2336,9 +2302,6 @@ void setPtts(int p)
  // ★Shonan_Lite-pi5統合版パッチ: 受信専用バンドでは画面のPTTを受け付けない
  // (PTTボタンは「RX ONLY」表示。displayMenu参照)。
  if((p==1) && bandRxOnly[band]) return;
- // ★Shonan_Lite-pi5統合版パッチ: 画面上のソフトウェアPTTボタンも、ハードウェア
- // PTTスイッチ(processGPIO側)と同様にESP32 PTTコントローラへ中継する。
- notifyEspPtt(p);
  if(p==1)
  {
   ptts=1;
