@@ -37,7 +37,7 @@ For `install.sh` to complete successfully when run as a normal user, all of the 
 - **`git`** — getting the source in 1/9 (`git clone`/`git fetch`) itself depends on the `git` command, but if it is not
   installed, 0/9 runs `sudo apt-get install -y git` automatically (added 2026-08-20 during verification on a device with
   a fresh OS).
-- **Authentication to GitHub** — the repository is private, so an HTTPS clone needs GitHub authentication. Register an SSH key on the Pi 5 and use `install_ssh.sh`, or clone on a PC and install with `deploy_to_pi5.sh`/`install_local.sh`.
+- **Authentication to GitHub** — the repository is public, so the default HTTPS clone gets it without authentication.
   To clone via SSH, use `install_ssh.sh` (if the device has no SSH key, 0/9 generates one, shows the steps to register it
   on GitHub and exits; registering the public key requires browser operations and cannot be automated; after
   registering it, run the same command again to continue).
@@ -56,7 +56,7 @@ For `install.sh` to complete successfully when run as a normal user, all of the 
 ## How to Run
 
 ```sh
-./pi5/scripts/install.sh          # clone/fetch via HTTPS (default; the repo is private, so GitHub authentication is needed)
+./pi5/scripts/install.sh          # clone/fetch via HTTPS (default; no authentication needed since the repo is public)
 ./pi5/scripts/install_ssh.sh      # clone/fetch via SSH (if your SSH key is registered on GitHub)
 ./pi5/scripts/install_local.sh    # deploy from an existing local clone (no source download from GitHub)
 ```
@@ -133,8 +133,8 @@ The following steps (0/9 to 9/9) are run on the Pi 5, which you can now connect 
     directly under `set -o pipefail` gives a false result, so the output is captured into a variable first and checked
     for "successfully authenticated" (a fix for a bug confirmed on the device).
 - If `REPO_URL` is HTTPS (default), it checks with `git ls-remote` that the repository is accessible. Since the
-  repository is private, it is not accessible without authentication; it then suggests switching to the SSH
-  version and exits.
+  repository is public, it normally proceeds as is (only if it is not accessible does it suggest switching to the SSH
+  version and exit).
 
 ## 1/9 Getting the Source
 

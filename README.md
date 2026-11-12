@@ -86,10 +86,21 @@ netmask_eth = 255.255.255.0
 
 ### 3. アプリを入れる / Install the app
 
-このリポジトリは**非公開**なので、GitHub に入れる PC(または SSH 鍵を登録した Pi 5)から取ります。次のどれか 1 つで入れます。
-/ This repository is **private**, so it is fetched from a PC that can access GitHub (or a Pi 5 with a registered SSH key). Use one of the following.
+次のどれか 1 つで入れます。 / Use one of the following.
 
-**A. PC から送って入れる(おすすめ) / From a PC (recommended)** — Mac・Linux・Windows(Git Bash)
+**A. Pi 5 で GitHub から取る(基本) / On the Pi 5 from GitHub (standard)** — Pi 5 に SSH で入って / log in to the Pi 5 by SSH
+
+```sh
+sudo apt-get update && sudo apt-get install -y git   # git が無いとき(初回のみ) / if git is missing (first time)
+git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git
+cd Shonan-V2_Lite-RasPI5
+./pi5/scripts/install.sh
+```
+
+このリポジトリは公開なので、GitHub の認証は要りません。SSH 鍵で取りたいときは `install.sh` の代わりに `install_ssh.sh`。
+/ The repository is public, so no GitHub authentication is needed. To fetch with an SSH key, use `install_ssh.sh` instead.
+
+**B. PC から送って入れる / From a PC** — Mac・Linux・Windows(Git Bash)
 
 ```sh
 git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git
@@ -101,25 +112,14 @@ PC の中身(`.git` 以外)を Pi 5 の `~/shonan-pi5-src` に送り、Pi 5 上�
 SSH のパスワードは最初の 1 回だけ聞かれます(`sudo` のパスワードも途中で聞かれることがあります)。
 / Sends the clone (without `.git`) to `~/shonan-pi5-src` on the Pi 5 and runs `install_local.sh` there. The SSH password is asked only once (`sudo` may ask too).
 
-**B. Pi 5 で GitHub から取る / On the Pi 5 from GitHub** — Pi 5 の SSH 鍵を GitHub に登録してある場合 / with the Pi 5's SSH key registered on GitHub
-
-```sh
-git clone git@github.com:kazushinjo/Shonan-V2_Lite-RasPI5.git
-cd Shonan-V2_Lite-RasPI5
-./pi5/scripts/install_ssh.sh
-```
-
-鍵が無ければ作って登録の案内を出して止まるので、GitHub に登録してからもう一度実行します。
-/ If there is no key it creates one, shows how to register it and stops; register it on GitHub and run again.
-
-**C. Pi 5 にあるクローンから入れる / From a clone already on the Pi 5** — GitHub に届かない場所など / e.g. without GitHub access
+**C. Pi 5 にあるクローンから入れる / From a clone already on the Pi 5** — Pi 5 が GitHub に届かない場所など / e.g. when the Pi 5 cannot reach GitHub
 
 ```sh
 ./pi5/scripts/install_local.sh
 ```
 
 **時間のかかる部分を省く / Skipping the long builds** — 省いた機能は使えなくなります / the skipped feature is then unavailable.
-A〜C のどれでも、前に付けて指定できます(例 `SKIP_JA_KEYBOARD=1 ./pi5/scripts/deploy_to_pi5.sh`)。
+A〜C のどれでも、前に付けて指定できます(例 `SKIP_JA_KEYBOARD=1 ./pi5/scripts/install.sh`)。
 
 | 変数 / Variable | 省くもの / Skips |
 | --- | --- |
@@ -148,8 +148,8 @@ A〜C のどれでも、前に付けて指定できます(例 `SKIP_JA_KEYBOARD=
 
 ### 更新 / Updating
 
-入れたときと同じ方法をもう一度実行します(A なら PC で `git pull` してから `deploy_to_pi5.sh`)。設定(`~/.config/shonan-pi5/settings.json`)は残ります。
-/ Run the same method again (for A: `git pull` on the PC, then `deploy_to_pi5.sh`). Settings (`~/.config/shonan-pi5/settings.json`) are kept.
+入れたときと同じ方法をもう一度実行します(A なら Pi 5 で `./pi5/scripts/install.sh`、B なら PC で `git pull` してから `deploy_to_pi5.sh`)。設定(`~/.config/shonan-pi5/settings.json`)は残ります。
+/ Run the same method again (A: `./pi5/scripts/install.sh` on the Pi 5; B: `git pull` on the PC, then `deploy_to_pi5.sh`). Settings (`~/.config/shonan-pi5/settings.json`) are kept.
 
 手順の詳しい説明とトラブル: [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)(英語 [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))。
 / Detailed steps and troubleshooting: see the install script guide.

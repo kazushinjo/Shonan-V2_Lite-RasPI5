@@ -28,7 +28,7 @@
 #
 # 使い方:
 #   ./pi5/scripts/install.sh            # 開発中の現行ブランチをclone
-#   ./pi5/scripts/install_ssh.sh        # SSHでclone(private repoのため通常こちらを使う)
+#   ./pi5/scripts/install_ssh.sh        # SSHでclone(GitHubにSSH鍵を登録済みの場合)
 #   ./pi5/scripts/install_local.sh      # 既にあるローカルクローンから展開(GitHub到達性不要)
 #   REPO_BRANCH=main ./pi5/scripts/install.sh # mainを指定する場合
 #   SKIP_JA_KEYBOARD=1 ./pi5/scripts/install.sh     # 日本語入力ビルドを省略(時間短縮)
@@ -71,10 +71,9 @@ elif ! command -v git >/dev/null 2>&1; then
   sudo apt-get install -y git
 fi
 
-# ★本リポジトリはprivateのため、HTTPS(REPO_URL既定値)ではpush/pull時に必ず
-# 認証を要求され、非対話環境(sshpass経由等)では"could not read Username"で
-# 即座に失敗する。install_ssh.sh(REPO_URL=git@github.com:...)を使う運用が
-# 前提だが、実機に一度もSSH鍵を登録していない新規OSでは同様に失敗する。
+# ★本リポジトリはpublicなので既定のHTTPSで取得できる。install_ssh.sh
+# (REPO_URL=git@github.com:...)を使う場合、実機に一度もSSH鍵を登録していない
+# 新規OSでは"could not read Username"等で失敗する。
 # SSH URLの場合のみ、鍵が無ければ生成し、GitHub側に未登録なら案内して
 # 一旦終了する(公開鍵の登録はブラウザ操作が必要なため自動化できない)。
 # ★LOCAL_SOURCE_DIR指定時(install_local.sh)はGitHubへ一切アクセスしないため、
@@ -109,7 +108,8 @@ MSG
     exit 1
   fi
 else
-  # ★REPO_URLがHTTPS(install.sh既定)の場合。本リポジトリはprivateのため、
+  # ★REPO_URLがHTTPS(install.sh既定)の場合。本リポジトリはpublicなので通常は
+  # そのまま取れるが、非公開に戻した場合やフォーク(private)を指定した場合、
   # 認証情報の無いHTTPSでは"git clone"が"could not read Username"という
   # 分かりにくいエラーで落ちる。事前にls-remoteでアクセス可否を確認し、
   # 失敗するならSSH版(install_ssh.sh)への切替を案内して終了する
@@ -125,7 +125,7 @@ else
     if grep -q "successfully authenticated" <<<"$ssh_auth_output"; then
       cat <<MSG
 
-このリポジトリはprivateのため、HTTPS(既定)では認証できません。
+HTTPS(既定)でリポジトリにアクセスできませんでした(ネットワーク、または非公開のため認証が必要)。
 SSH鍵は登録済みです。代わりに以下を実行してください。
 
   ./pi5/scripts/install_ssh.sh
@@ -134,7 +134,7 @@ MSG
     else
       cat <<MSG
 
-このリポジトリはprivateのため、HTTPS(既定)では認証できません。
+HTTPS(既定)でリポジトリにアクセスできませんでした(ネットワーク、または非公開のため認証が必要)。
 以下の公開鍵をGitHubアカウントに登録してから、./pi5/scripts/install_ssh.sh
 を実行してください。
 
