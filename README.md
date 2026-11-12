@@ -54,30 +54,105 @@ How they were taken: [`pi5/docs/screen_capture.md`](pi5/docs/screen_capture.md).
 
 ## インストール / Installation
 
-必要なもの: Raspberry Pi 5、Raspberry Pi OS **64-bit**、同じ LAN の Pluto(DATV ファーム)、任意で USB カメラ・オーディオ。
-/ Needs: Raspberry Pi 5, Raspberry Pi OS **64-bit**, a Pluto (DATV firmware) on the same LAN, optional USB camera/audio.
+### 用意するもの / What you need
 
-1. Raspberry Pi Imager で Raspberry Pi OS (64-bit) を書き込み、SSH を有効にして起動する。 / Write Raspberry Pi OS (64-bit) with Raspberry Pi Imager, enable SSH, boot.
-2. Pluto の LAN の IP を決める(Pluto の USB ドライブの `config.txt` の `[USB_ETHERNET] ipaddr_eth`、取り出すと保存)。
-   / Set the Pluto LAN IP (`[USB_ETHERNET] ipaddr_eth` in `config.txt` on the Pluto USB drive; saved on eject).
-   詳細 / Details: [`pi5/docs/pluto_network.md`](pi5/docs/pluto_network.md)
-3. このリポジトリは**非公開**なので、PC に clone してから Pi 5 へ送ってインストールする(Pi 5 の IP とユーザー名を聞かれる)。
-   / This repository is **private**: clone it on a PC, then transfer and install to the Pi 5 (asks for the Pi 5 IP and user).
+- Raspberry Pi 5 と起動用の microSD カードまたは NVMe SSD / A Raspberry Pi 5 with a microSD card or NVMe SSD
+- **Raspberry Pi OS (64-bit)**(32-bit 版は不可) / **Raspberry Pi OS (64-bit)** (32-bit is not supported)
+- Pi 5 と同じ LAN につないだ Pluto(DATV ファーム。インストール中はつながっていなくてよい)
+  / A Pluto (DATV firmware) on the same LAN as the Pi 5 (it need not be connected while installing)
+- インターネット接続(apt とビルドで使う) / Internet access (for apt and the builds)
+- 任意: USB カメラ・USB オーディオ(無くてもテストパターンで動作を確かめられる) / Optional: USB camera and audio (the test pattern works without them)
 
-   ```sh
-   git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git
-   cd Shonan-V2_Lite-RasPI5
-   ./pi5/scripts/deploy_to_pi5.sh
-   ```
+### 1. Raspberry Pi OS を入れる / Install Raspberry Pi OS
 
-   Pi 5 に直接 clone 済みなら `./pi5/scripts/install_local.sh`。 / If already cloned on the Pi 5, run `./pi5/scripts/install_local.sh`.
-   Pi 5 に GitHub の SSH 鍵を登録してあれば、Pi 5 上で `./pi5/scripts/install_ssh.sh` でも入れられる(このリポジトリから取る)。
-   / With a GitHub SSH key registered on the Pi 5, `./pi5/scripts/install_ssh.sh` on the Pi 5 also works (fetches this repository).
-   `SKIP_JA_KEYBOARD=1`・`SKIP_GNURADIO_BUILD=1`・`SKIP_LANGSTONE_BUILD=1` で時間のかかる部分を省ける(その機能は使えなくなる)。
-   / These variables skip the long builds (the feature is then unavailable).
-4. 再起動すると Shonan_Lite / Langstone V3 を選ぶメニューが出る。設定画面で Pluto の IP を入れる。 / After reboot, a menu chooses Shonan_Lite / Langstone V3. Enter the Pluto IP on Config.
+1. PC の [Raspberry Pi Imager](https://www.raspberrypi.com/software/) で、デバイス **Raspberry Pi 5**・OS **Raspberry Pi OS (64-bit)** を選ぶ。
+   / In [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on a PC, choose **Raspberry Pi 5** and **Raspberry Pi OS (64-bit)**.
+2. 詳細設定(歯車)でホスト名・ユーザー名(例 `pi`)・パスワード・Wi-Fi・**SSH 有効**を設定して書き込み、Pi 5 を起動する。
+   / In the advanced options set the hostname, user (e.g. `pi`), password, Wi-Fi and **enable SSH**; write and boot the Pi 5.
+3. PC から `ssh pi@<Pi 5 の IP>` で入れることを確かめる。 / Check that `ssh pi@<Pi 5 IP>` works from the PC.
 
-手順の詳細とトラブル: [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)(英語 [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))。
+### 2. Pluto の LAN の IP を決める / Set the Pluto LAN IP
+
+Pluto を PC に USB でつなぎ、出てきたドライブの `config.txt` の `[USB_ETHERNET]` に Pi 5 と同じネットワークの IP を書いて、ドライブを取り出す(保存されて Pluto が再起動する)。
+/ Connect the Pluto to a PC by USB, set an IP on the Pi 5's network in `[USB_ETHERNET]` of `config.txt` on its drive, and eject (it saves and reboots).
+
+```ini
+[USB_ETHERNET]
+ipaddr_eth = 192.168.0.20
+netmask_eth = 255.255.255.0
+```
+
+詳細 / Details: [`pi5/docs/pluto_network.md`](pi5/docs/pluto_network.md)
+
+### 3. アプリを入れる / Install the app
+
+このリポジトリは**非公開**なので、GitHub に入れる PC(または SSH 鍵を登録した Pi 5)から取ります。次のどれか 1 つで入れます。
+/ This repository is **private**, so it is fetched from a PC that can access GitHub (or a Pi 5 with a registered SSH key). Use one of the following.
+
+**A. PC から送って入れる(おすすめ) / From a PC (recommended)** — Mac・Linux・Windows(Git Bash)
+
+```sh
+git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git
+cd Shonan-V2_Lite-RasPI5
+./pi5/scripts/deploy_to_pi5.sh        # Pi 5 の IP とユーザー名を聞かれる / asks for the Pi 5 IP and user
+```
+
+PC の中身(`.git` 以外)を Pi 5 の `~/shonan-pi5-src` に送り、Pi 5 上で `install_local.sh` を実行します。
+SSH のパスワードは最初の 1 回だけ聞かれます(`sudo` のパスワードも途中で聞かれることがあります)。
+/ Sends the clone (without `.git`) to `~/shonan-pi5-src` on the Pi 5 and runs `install_local.sh` there. The SSH password is asked only once (`sudo` may ask too).
+
+**B. Pi 5 で GitHub から取る / On the Pi 5 from GitHub** — Pi 5 の SSH 鍵を GitHub に登録してある場合 / with the Pi 5's SSH key registered on GitHub
+
+```sh
+git clone git@github.com:kazushinjo/Shonan-V2_Lite-RasPI5.git
+cd Shonan-V2_Lite-RasPI5
+./pi5/scripts/install_ssh.sh
+```
+
+鍵が無ければ作って登録の案内を出して止まるので、GitHub に登録してからもう一度実行します。
+/ If there is no key it creates one, shows how to register it and stops; register it on GitHub and run again.
+
+**C. Pi 5 にあるクローンから入れる / From a clone already on the Pi 5** — GitHub に届かない場所など / e.g. without GitHub access
+
+```sh
+./pi5/scripts/install_local.sh
+```
+
+**時間のかかる部分を省く / Skipping the long builds** — 省いた機能は使えなくなります / the skipped feature is then unavailable.
+A〜C のどれでも、前に付けて指定できます(例 `SKIP_JA_KEYBOARD=1 ./pi5/scripts/deploy_to_pi5.sh`)。
+
+| 変数 / Variable | 省くもの / Skips |
+| --- | --- |
+| `SKIP_JA_KEYBOARD=1` | 日本語キーボードのビルド(10〜20分) / Japanese keyboard build (10–20 min) |
+| `SKIP_GNURADIO_BUILD=1` | 受信用 GNU Radio・gr-dvbs2rx(**受信できなくなる**) / RX GNU Radio and gr-dvbs2rx (**no reception**) |
+| `SKIP_LANGSTONE_BUILD=1` | Langstone V3 |
+
+インストール先は `~/shonan-pi5`(`SHONAN_INSTALL_DIR` で変更可)。インストールは次の順に進み、どこかで失敗するとそこで止まります。
+/ Installs to `~/shonan-pi5` (`SHONAN_INSTALL_DIR`). It runs these steps and stops at the first failure.
+
+0. 前提の確認(git・SSH 鍵) / prerequisites → 1. ソース取得 / source → 2. apt パッケージ / packages →
+3. 日本語キーボード / Japanese keyboard → 4. GNU Radio・gr-dvbs2rx(APSK パッチを含む / with the APSK patch) →
+5. Langstone V3 → 6. 起動時の表示を抑える / quiet boot → 7. 再起動・切替の sudo 許可 / sudoers →
+8. 電源電圧警告アイコンを消す / no under-voltage icon → 9. systemd サービス登録 / services → 最後に入ったものを確かめる / final check
+
+途中で電源やネットワークが切れない状態で実行してください。 / Run it where power and network will not be interrupted.
+
+### 4. 起動と初期設定 / First start
+
+1. Pi 5 を再起動すると、Shonan_Lite と Langstone V3 を選ぶメニューが出る。Shonan_Lite を選ぶ。
+   / Reboot the Pi 5; a menu offers Shonan_Lite or Langstone V3. Choose Shonan_Lite.
+2. 「設定」→「送信先 (Pluto Tx)」に手順 2 の Pluto の IP を入れる(「出力設定」の「自動検出」でも探せる)。
+   / Enter the Pluto IP from step 2 under Config → "Destination (Pluto Tx)" (or use "Auto detect" on Stream Output).
+3. 「設定」→「Pluto 情報」→「バージョン」で Pluto が読めれば接続できている。 / If Config → Pluto Info → Version reads the Pluto, it is connected.
+4. 使い方はホームの「ヘルプ」へ。 / See "Help" on the Home screen for how to use it.
+
+### 更新 / Updating
+
+入れたときと同じ方法をもう一度実行します(A なら PC で `git pull` してから `deploy_to_pi5.sh`)。設定(`~/.config/shonan-pi5/settings.json`)は残ります。
+/ Run the same method again (for A: `git pull` on the PC, then `deploy_to_pi5.sh`). Settings (`~/.config/shonan-pi5/settings.json`) are kept.
+
+手順の詳しい説明とトラブル: [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)(英語 [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))。
+/ Detailed steps and troubleshooting: see the install script guide.
 
 ## Langstone V3 と 10GHz 受信 / Langstone V3 and 10 GHz reception
 
