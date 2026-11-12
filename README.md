@@ -1,716 +1,108 @@
 # Shonan-V2_Lite for RasPI5
 
-Raspberry Pi 5 + ADALM-PlutoによるDVB-S2 DATV送受信タッチGUIシステム。
-本体は`pi5/`配下(Python/PyQt5、eglfs直描画)。
-
-A touch-screen GUI system for DVB-S2 DATV transmission and reception using a Raspberry Pi 5 and an ADALM-Pluto.
-The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
-
-> 本READMEは日本語と英語を併記しています。各節で日本語の後に英語が続きます。
-> This README is written in both Japanese and English. In each section, the Japanese text is followed by the English text.
+Raspberry Pi 5 と ADALM-Pluto(Pluto+)で DVB-S2 DATV を送受信するタッチ画面アプリ(`pi5/`、Python/PyQt5)。
+A touch-screen app for DVB-S2 DATV transmit/receive with a Raspberry Pi 5 and an ADALM-Pluto (Pluto+) (`pi5/`, Python/PyQt5).
 
 > [!IMPORTANT]
-> **Plutoのユーザー名(`root`)・パスワード(`analog`)はデフォルト値のまま変更しないでください。**
-> 本アプリとLangstone V3は、SSHでPlutoにログインしてリブートしています(アプリ起動時・アプリ再起動・
-> 機器試験・Langstone終了時)。変更するとPlutoをリブートできなくなります。
->
-> **Keep the Pluto's username (`root`) and password (`analog`) at their default values.**
-> This app and Langstone V3 log in to the Pluto via SSH to reboot it (at app start, app restart,
-> equipment test and Langstone exit). If they are changed, the Pluto cannot be rebooted.
+> **Pluto のユーザー名 `root`・パスワード `analog` は変えないでください。** アプリと Langstone V3 は SSH で Pluto を再起動・設定します。
+> **Keep the Pluto user `root` / password `analog`.** The app and Langstone V3 use SSH to reboot and configure the Pluto.
 
 ## 主な機能 / Features
 
-- **送信**: 周波数・シンボルレート(333〜2000 kS/s)・FEC・変調方式(QPSK/8PSK/16APSK/32APSK)・TX出力を画面で設定し、
-  Pluto内の`pluto_dvb`でDVB-S2送信する。FECはDVB-S2の全28組み合わせから選べる
-  (QPSK: 1/4〜9/10、8PSK: 3/5〜9/10、16APSK: 2/3〜9/10、32APSK: 3/4〜9/10)。
-  無印Pluto(datvplutofrm v0.39-dirty、ARMのソフト変調)とPluto+(FPGA版ファーム`plutoplus-udp-fpga-firm`、FPGAの変調回路)の
-  どちらでも同じ操作で送信できる。送信映像はフルHD(1920x1080)固定。
-  16APSK・32APSKは、Plutoのファームの版(IIOの`fw_version`)に**大文字の`FPGA`**が含まれるとき
-  (Pluto+のFPGA版ファーム、例: `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`)だけ選べる。それ以外のファームでは8PSKまで。
-  判定は大文字・小文字を区別するので、`fpga`(小文字)だけの版名では選べない。版は設定画面の「Pluto 情報」→「バージョン」で確かめられる。
-- **映像ソース**: USBカメラ・画像ファイル(静止画を反復送信)・テストパターンから選ぶ。カメラ選択時は
-  「撮影」ボタンで静止画(JPG、`~/Pictures/Shonan_Lite/`)を撮り、そのまま送信画像に使える。
-  コールサイン・備考を文字サイズ・文字色を選んで映像へ焼き込める(日時も表示)。
-- **受信**: GNU Radio(gr-dvbs2rx)によるPi 5上での復調。16APSK/32APSKは本リポジトリのパッチ
-  (`pi5/docs/patches/gr-dvbs2rx_apsk.patch`、install.shが自動で当てる)で受信できるようにしている。LOCK状態・ビットレート・パケット数/エラー数を表示。
-- **RSSI測定**: 周波数を掃引して受信レベルをグラフ表示する。オンデバイス復調OFF(通常運用)では
-  相手局の電波を測り、ON(テスト用)では自局もテストパターンで自動送信して自分の信号を測る。
-- **プリセット**: 現在の設定を5件まで登録・呼び出し(プリセット1は未登録の間RFループバック試験用)。
-- **10GHz受信(LNB)**: Home画面の衛星をタップすると、Langstone V3を10236.5 MHz表示・
-  Pluto受信486.5 MHz(LNB局部発振9750 MHz)の受信専用バンドで開く(下記参照)。
-  Shonan_Lite(DATV)でも、周波数画面で「10GHz帯」を押すとLNBを使用するか確認し、使用する場合は
-  表示周波数10.2365 GHz・Pluto受信486.5 MHzで受信する(受信専用、送信不可。「いいえ」なら従来どおり10180 MHz)。
-- **その他**: Pluto URIの自動検出、日本語/英語表示、日本語オンスクリーンキーボード、アプリ内Help、
-  機器試験、起動時のアプリ選択(Shonan_Lite / Langstone V3)。
+- **送信 / TX**: Pluto 内の `pluto_dvb` で DVB-S2 送信。シンボルレート 333〜2000 kS/s、全 28 MOD-COD(QPSK・8PSK・16APSK・32APSK)。
+  無印 Pluto(datvplutofrm v0.39-dirty、ソフト変調)と Pluto+(FPGA 版ファーム `plutoplus-udp-fpga-firm`)で同じ操作。
+  / DVB-S2 via `pluto_dvb` in the Pluto; 333–2000 kS/s, all 28 MOD-CODs. Same operation on a plain Pluto (v0.39-dirty, software) and a Pluto+ (FPGA firmware).
+- **受信 / RX**: Pi 5 上で GNU Radio(gr-dvbs2rx)が復調。APSK は本リポジトリのパッチで対応。 / Demodulated on the Pi 5 with gr-dvbs2rx; APSK via this repository's patch.
+- **映像 / Video**: USB カメラ・画像ファイル・テストパターン、H.264/H.265、コールサイン・備考の焼き込み。 / Camera, image or test pattern; H.264/H.265; burned-in callsign/note.
+- **その他 / Other**: RSSI 測定、プリセット、機器試験、日本語/英語、日本語キーボード、アプリ内ヘルプ、起動時に Shonan_Lite / Langstone V3 を選択、
+  10GHz の LNB 受信、PA/LNA 切替用 PTT 出力(GPIO21)。 / RSSI sweep, presets, diagnostics, JA/EN, on-screen keyboard, help, boot-time app choice, 10 GHz LNB RX, PTT output (GPIO21).
 
-<!-- English -->
+> [!NOTE]
+> **16APSK・32APSK は、Pluto のファームの版(IIO の `fw_version`)に大文字の `FPGA` があるときだけ選べます**
+> (Pluto+ の FPGA 版、例 `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`)。大文字・小文字を区別するので、小文字の `fpga` だけでは選べません。
+> 版は「設定」→「Pluto 情報」→「バージョン」で確かめられます。
+> **16APSK/32APSK can be selected only when the Pluto `fw_version` contains an upper-case `FPGA`** (the Pluto+ FPGA firmware). The check is case-sensitive.
+> Check it under Config → Pluto Info → Version.
 
-- **Transmit**: Set the frequency, symbol rate (333–2000 kS/s), FEC, modulation (QPSK/8PSK/16APSK/32APSK) and TX power on screen,
-  and transmit DVB-S2 with `pluto_dvb` inside the Pluto. All 28 DVB-S2 MOD-CODs can be selected
-  (QPSK: 1/4-9/10; 8PSK: 3/5-9/10; 16APSK: 2/3-9/10; 32APSK: 3/4-9/10). A plain Pluto (datvplutofrm v0.39-dirty,
-  software modulation on the ARM) and a Pluto+ (FPGA firmware `plutoplus-udp-fpga-firm`, modulator in the FPGA) are operated the same way. The transmitted video is fixed at Full HD (1920x1080).
-  16APSK/32APSK can be selected only when the Pluto firmware version (IIO `fw_version`) contains an **upper-case `FPGA`**
-  (the Pluto+ FPGA firmware, e.g. `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`); with any other firmware the choice stops at 8PSK.
-  The check is case-sensitive, so a version name with only a lower-case `fpga` does not enable them. The version is shown under
-  "Pluto Info" → "Version" on the Config screen.
-- **Video source**: Choose from a USB camera, an image file (a still image transmitted repeatedly) or a test pattern.
-  With the camera selected, the "Capture" button takes a still image (JPG, `~/Pictures/Shonan_Lite/`) that can be
-  used directly as the transmit image. A callsign and a note can be burned into the video with a selectable
-  text size and color (the date and time are shown as well).
-- **Receive**: Demodulation on the Pi 5 with GNU Radio (gr-dvbs2rx). 16APSK/32APSK reception is added by this
-  repository's patch (`pi5/docs/patches/gr-dvbs2rx_apsk.patch`, applied automatically by install.sh). Shows LOCK status, bit rate and packet/error counts.
-- **RSSI measurement**: Sweeps the frequency and graphs the received level. With on-device demodulation OFF
-  (normal operation) it measures the other station's signal; with it ON (for testing) the station also transmits
-  a test pattern automatically and measures its own signal.
-- **Presets**: Save and recall up to 5 sets of settings (preset 1 is used for the RF loopback test while it is empty).
-- **10 GHz reception (LNB)**: Tapping the satellite on the Home screen opens Langstone V3 on a receive-only band
-  showing 10236.5 MHz, with the Pluto receiving at 486.5 MHz (LNB local oscillator 9750 MHz). See below.
-  In Shonan_Lite (DATV) as well, pressing "10GHz Band" on the Frequency screen asks whether to use an LNB;
-  if so, it receives with the displayed frequency 10.2365 GHz and the Pluto receiving at 486.5 MHz
-  (receive only, no transmit; "No" keeps 10180 MHz as before).
-- **Other**: Automatic Pluto URI detection, Japanese/English display, Japanese on-screen keyboard, in-app Help,
-  equipment test, and application selection at boot (Shonan_Lite / Langstone V3).
+## 画面 / Screens
 
-## スクリーンショット / Screenshots
+実機(7インチ LCD、800x480)、2026-11-12 撮影、Version 2.0.0、Pluto+ FPGA 版ファーム接続、送受信停止中。
+撮り方は [`pi5/docs/screen_capture.md`](pi5/docs/screen_capture.md)。操作の詳細はアプリ内ヘルプか
+[操作説明書](pi5/docs/shonan_pi5_operation_manual.docx)。
+/ Taken on the device (7-inch LCD, 800x480) on 2026-11-12, Version 2.0.0, Pluto+ FPGA firmware, TX/RX stopped.
+How they were taken: [`pi5/docs/screen_capture.md`](pi5/docs/screen_capture.md). Details: in-app Help or the [operation manual](pi5/docs/shonan_pi5_operation_manual.docx) (Japanese).
 
-実機(7インチLCD、800x480)の画面(2026-11-12撮影、Version 2.0.0、Pluto+はFPGA版ファーム
-`plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`を接続)。送受信は止めた状態で撮っている。アプリの制御ソケット
-(`/tmp/shonan-pi5-gui.sock`の`navigate:<画面>`・`screenshot`)で画面を切り替えて撮影し、
-Langstone V3の画面はフレームバッファ(`/dev/fb0`)から取り込んだ。
-
-Screens from the actual device (7-inch LCD, 800x480, taken on 2026-11-12, Version 2.0.0, with a Pluto+ running the FPGA
-firmware `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`). TX and RX were stopped. The screens were switched and captured through
-the app's control socket (`navigate:<screen>` and `screenshot` on `/tmp/shonan-pi5-gui.sock`); the Langstone V3 screen
-was read from the frame buffer (`/dev/fb0`).
-
-| Home画面 / Home | 送信画面 / TX | 受信画面 / RX |
-| --- | --- | --- |
-| ![Home画面](pi5/docs/images/screenshot_home.png) | ![送信画面](pi5/docs/images/screenshot_tx.png) | ![受信画面](pi5/docs/images/screenshot_rx.png) |
-
-| 周波数 / Frequency | RSSI測定 / RSSI | シンボルレート / Symbol rate |
-| --- | --- | --- |
-| ![周波数](pi5/docs/images/screenshot_frequency.png) | ![RSSI測定](pi5/docs/images/screenshot_rssi.png) | ![シンボルレート](pi5/docs/images/screenshot_symbolrate.png) |
-
-| 誤り訂正 / FEC | 変調方式 / Modulation | 映像ソース / Video source |
-| --- | --- | --- |
-| ![誤り訂正](pi5/docs/images/screenshot_fec.png) | ![変調方式](pi5/docs/images/screenshot_modulation.png) | ![映像ソース](pi5/docs/images/screenshot_videosource.png) |
-
-| 出力設定 / Stream output | RXゲイン / RX gain | TX出力 / TX power |
-| --- | --- | --- |
-| ![出力設定](pi5/docs/images/screenshot_streamoutput.png) | ![RXゲイン](pi5/docs/images/screenshot_rxgain.png) | ![TX出力](pi5/docs/images/screenshot_txpower.png) |
-
-| 設定 / Config | 機器試験 / Diagnostic | プリセット / Presets |
-| --- | --- | --- |
-| ![設定](pi5/docs/images/screenshot_settings.png) | ![機器試験](pi5/docs/images/screenshot_testequipment.png) | ![プリセット](pi5/docs/images/screenshot_presets.png) |
-
-| ヘルプ / Help | Langstone V3 |
+| 画面 / Screen | 説明 / Description |
 | --- | --- |
-| ![ヘルプ](pi5/docs/images/screenshot_manual.png) | ![Langstone V3](pi5/docs/images/screenshot_langstone.png) |
-
-各画面の操作方法は、アプリ内の「ヘルプ」または操作説明書
-[`pi5/docs/shonan_pi5_operation_manual.docx`](pi5/docs/shonan_pi5_operation_manual.docx)を参照。
-
-For how to operate each screen, see the in-app "Help" or the operation manual
-[`pi5/docs/shonan_pi5_operation_manual.docx`](pi5/docs/shonan_pi5_operation_manual.docx) (in Japanese).
+| <img src="pi5/docs/images/screenshot_home.png" width="360"> | **Home**<br>各機能のカード。周波数カードに今の周波数を表示。右の衛星をタップすると Langstone V3 を 10GHz 受信用のバンドで開く。<br><br>Cards for every function; the Frequency card shows the current frequency. Tapping the satellite opens Langstone V3 on the 10 GHz receive band. |
+| <img src="pi5/docs/images/screenshot_tx.png" width="360"> | **送信 / TX**<br>送信映像のプレビューと送信状態(周波数・シンボルレート・変調方式・FEC・出力・パケット数・フレーム数)。「送信開始」で送信する。<br><br>Preview of the transmitted video and TX status (frequency, symbol rate, modulation, FEC, power, packets, frames). "Start TX" transmits. |
+| <img src="pi5/docs/images/screenshot_rx.png" width="360"> | **受信 / RX**<br>Pi 5 上で復調した受信状態(LOCK・ビットレート・パケット/秒・エラー)と受信映像。音量はスライダーかロータリーエンコーダで変える。<br><br>RX status demodulated on the Pi 5 (LOCK, bit rate, packets/s, errors) and the received video. Volume with the slider or the rotary encoder. |
+| <img src="pi5/docs/images/screenshot_frequency.png" width="360"> | **周波数 / Frequency**<br>テンキーで kHz 入力、右でバンド(1200MHz〜24GHz)を選ぶ。10GHz帯は LNB を使うか確認する(使うと受信専用)。<br><br>Enter kHz on the keypad or pick a band (1200 MHz to 24 GHz). The 10 GHz band asks whether an LNB is used (then receive only). |
+| <img src="pi5/docs/images/screenshot_rssi.png" width="360"> | **RSSI測定 / RSSI**<br>中心周波数の±5/10/20 MHz をステップごとに測り、受信レベルをグラフにして一番強い周波数を示す。1回/連続、RXゲインも選べる。<br><br>Sweeps ±5/10/20 MHz around the centre in steps, graphs the level and shows the strongest frequency. Once/continuous and RX gain selectable. |
+| <img src="pi5/docs/images/screenshot_symbolrate.png" width="360"> | **シンボルレート / Symbol rate**<br>333〜2000 kS/s のプリセットかテンキーで入力。帯域幅の目安も表示する。<br><br>Pick a preset from 333 to 2000 kS/s or type one; the approximate bandwidth is shown. |
+| <img src="pi5/docs/images/screenshot_fec.png" width="360"> | **誤り訂正 / FEC**<br>自動、または変調方式ごとに使える符号化率から選ぶ。送れるビットレートと映像・音声に必要なビットレートを比べて表示する。<br><br>Auto, or a code rate valid for the modulation. Shows the payload rate against the rate needed for video and audio. |
+| <img src="pi5/docs/images/screenshot_modulation.png" width="360"> | **変調方式 / Modulation**<br>QPSK・8PSK・16APSK・32APSK とコンステレーション。16APSK・32APSK は Pluto+ の FPGA 版ファームのときだけ選べる(下の注意)。<br><br>QPSK, 8PSK, 16APSK, 32APSK with the constellation. 16APSK/32APSK only with the Pluto+ FPGA firmware (see the note below). |
+| <img src="pi5/docs/images/screenshot_videosource.png" width="360"> | **映像ソース / Video source**<br>カメラ・画像ファイル・テストパターンから選ぶ。コーデック(H.264/H.265)と解像度、コールサイン・備考の焼き込みも設定する。カメラでは静止画を撮れる。<br><br>Camera, image file or test pattern; codec (H.264/H.265), resolution and the burned-in callsign/note. Stills can be captured from the camera. |
+| <img src="pi5/docs/images/screenshot_streamoutput.png" width="360"> | **出力設定 / Stream output**<br>Pluto の IP(自動検出あり)と受信 TS・ステータスのポート。送信先のポートは Pluto 側で 8282 に固定。<br><br>Pluto IP (with auto-detect) and the RX TS / status ports. The TX port is fixed at 8282 on the Pluto. |
+| <img src="pi5/docs/images/screenshot_rxgain.png" width="360"> | **RXゲイン / RX gain**<br>受信ゲイン(自動調整 ON/OFF)と信号レベル。<br><br>RX gain (auto on/off) and the signal level. |
+| <img src="pi5/docs/images/screenshot_txpower.png" width="360"> | **TX出力 / TX power**<br>送信出力の減衰量(0 dB が最大)。<br><br>TX attenuation (0 dB is maximum). |
+| <img src="pi5/docs/images/screenshot_settings.png" width="360"> | **設定 / Config**<br>表示言語、送信先の Pluto、送信音声の入力、日時、オンデバイス復調、Pluto 情報(版・settings.txt・AD9361 の値を読むだけ)。<br><br>Language, destination Pluto, TX audio input, date/time, on-device demodulation, and Pluto Info (read-only: version, settings.txt, AD9361 values). |
+| <img src="pi5/docs/images/screenshot_testequipment.png" width="360"> | **機器試験 / Diagnostic**<br>Pluto 接続・送信・受信・温度・ファンをまとめて試す「全体試験」と、カメラ+音声の診断。<br><br>"Full test" of Pluto link, TX, RX, temperature and fan, plus a camera + audio check. |
+| <img src="pi5/docs/images/screenshot_presets.png" width="360"> | **プリセット / Presets**<br>今の設定を5件まで登録・呼び出し。プリセット1は未登録の間 RF ループバック試験用。<br><br>Save/recall up to 5 settings. Preset 1 is the RF loopback test while empty. |
+| <img src="pi5/docs/images/screenshot_manual.png" width="360"> | **ヘルプ / Help**<br>アプリ内の操作説明(目次と検索つき)。操作説明書(docx)と同じ内容。<br><br>In-app manual with contents and search; same content as the operation manual (docx). |
+| <img src="pi5/docs/images/screenshot_langstone.png" width="360"> | **Langstone V3**<br>Home の「Langstone」で切り替える SDR トランシーバー(写真は 5760 MHz FM 受信)。「GOTO SHONAN_LITE」で戻る。<br><br>SDR transceiver opened from "Langstone" on Home (shown receiving 5760 MHz FM). "GOTO SHONAN_LITE" returns. |
 
 ## インストール / Installation
 
-### 事前に準備するもの / What you need
-
-- Raspberry Pi 5本体
-- microSDカードまたはNVMe SSD(Pi5の起動ストレージ)
-- 書き込み用PC(Windows/Mac/Linuxいずれか)とmicroSDカードリーダー等
-- ADALM-Pluto(DATVファームウェア導入済み)がPi5とEthernet同一ネットワークに
-  接続されていること(★`install.sh`実行時点では未接続でもよい。あくまで
-  ソフトウェア導入のみで、実運用時に必要)
-- 送信映像用USBカメラ・オーディオ機器(任意、無くてもテストパターン映像で
-  動作確認できる)
-
-<!-- English -->
-
-- A Raspberry Pi 5
-- A microSD card or NVMe SSD (the Pi 5 boot storage)
-- A PC for writing the image (Windows, Mac or Linux) and a microSD card reader, etc.
-- An ADALM-Pluto (with DATV firmware installed) connected to the same Ethernet network as the Pi 5
-  (★It does not need to be connected when running `install.sh`; that only installs software.
-  It is required for actual operation.)
-- A USB camera and audio devices for the transmitted video (optional; without them you can still
-  check operation with the test pattern)
-
-### 0. Raspberry Pi OSのインストール / Installing Raspberry Pi OS
-
-Pi5本体に、あらかじめRaspberry Pi OSをインストールしておく。
-
-1. PCで[Raspberry Pi Imager](https://www.raspberrypi.com/software/)を起動する。
-2. 「デバイスを選択」で **Raspberry Pi 5** を選ぶ。
-3. 「OSを選択」で **Raspberry Pi OS (64-bit)** を選ぶ
-   (★32bit版は不可。下記「実行条件」参照)。
-4. 「ストレージを選択」で書き込み先のmicroSD/NVMeを選ぶ。
-5. 歯車アイコン(詳細設定)で、ホスト名・ユーザー名/パスワード・Wi-Fi・SSH有効化を
-   事前設定しておくと、初回起動後すぐSSH接続できる。
-6. 「書き込む」を実行し、完了後microSD/NVMeをPi5に取り付けて起動する。
-7. PCから`ssh <ユーザー名>@<ホスト名>.local`で接続できることを確認する。
-
-Install Raspberry Pi OS on the Pi 5 beforehand.
-
-1. Launch [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your PC.
-2. Under "Choose Device", select **Raspberry Pi 5**.
-3. Under "Choose OS", select **Raspberry Pi OS (64-bit)**
-   (★The 32-bit version is not supported. See "Requirements" below).
-4. Under "Choose Storage", select the target microSD/NVMe.
-5. If you preset the hostname, username/password, Wi-Fi and SSH in the gear icon (advanced options),
-   you can connect via SSH right after the first boot.
-6. Click "Write". When done, attach the microSD/NVMe to the Pi 5 and boot it.
-7. Confirm that you can connect from your PC with `ssh <username>@<hostname>.local`.
-
-### 0.5 Plutoのネットワーク設定(USB_ETHERNET) / Pluto network settings (USB_ETHERNET)
-
-ADALM-Pluto(DATVファームウェア導入済み)をPi5と同じEthernetネットワークに
-接続するには、あらかじめPluto側のUSB_ETHERNETインターフェースに固定IPを
-設定しておく。
-
-1. PlutoをPCとUSBケーブルで接続する(USB Mass Storageとして認識される)。
-2. Plutoのドライブ直下にある`config.txt`をテキストエディタで開く。
-3. `[USB_ETHERNET]`セクションの`ipaddr_eth`と`netmask_eth`を、Pi5と同じ
-   サブネット内の値に設定する(例、Pi5が`192.168.0.80/24`の場合)。
-4. `config.txt`を保存し、PlutoのドライブをPCから安全に取り出す(eject)。
-   Plutoが自動的に再起動し、新しいIPアドレスで起動する。
-5. Pi5の設定画面「送信先 (Pluto Tx)」に、ここで設定した`ipaddr_eth`の値
-   (下記例では`192.168.0.51`)を入力する。
-
-To connect the ADALM-Pluto (with DATV firmware) to the same Ethernet network as the Pi 5,
-assign a static IP to the Pluto's USB_ETHERNET interface beforehand.
-
-1. Connect the Pluto to your PC with a USB cable (it appears as a USB Mass Storage device).
-2. Open `config.txt` in the root of the Pluto drive with a text editor.
-3. Set `ipaddr_eth` and `netmask_eth` in the `[USB_ETHERNET]` section to values in the same subnet
-   as the Pi 5 (example below for a Pi 5 at `192.168.0.80/24`).
-4. Save `config.txt` and safely eject the Pluto drive from the PC.
-   The Pluto reboots automatically and comes up with the new IP address.
-5. Enter the `ipaddr_eth` value set here (`192.168.0.51` in the example below) into
-   "Destination (Pluto Tx)" on the Pi 5 settings screen.
-
-```ini
-[USB_ETHERNET]
-ipaddr_eth = 192.168.0.51
-netmask_eth = 255.255.255.0
-```
-
-★Plutoのユーザー名(`root`)とパスワード(`analog`)は変更しないこと(理由は冒頭の「IMPORTANT」を参照)。
-
-★Do not change the Pluto's username (`root`) and password (`analog`) (see "IMPORTANT" at the top for why).
-
-★USB直結時のUSB CDCネットワーク(`[NETWORK]`セクション、既定`192.168.2.1`)
-とは別の設定である。`[USB_ETHERNET]`は、Pluto(Pluto+)のUSB OTGポートに
-挿したUSB-Ethernetアダプタに割り当てるIPアドレスで、これによりPlutoが
-Pi5と同じLAN(Ethernet)上のノードとして直接通信できるようになる。
-設定ファイルの詳細は
-[ADI公式Wiki](https://wiki.analog.com/university/tools/pluto/users/customizing)
-を参照。
-
-★This is separate from the USB CDC network used for a direct USB connection (the `[NETWORK]` section,
-default `192.168.2.1`). `[USB_ETHERNET]` is the IP address assigned to a USB-Ethernet adapter plugged
-into the Pluto (Pluto+) USB OTG port, which lets the Pluto communicate directly as a node on the same
-LAN (Ethernet) as the Pi 5. For details of the configuration file, see the
-[official ADI Wiki](https://wiki.analog.com/university/tools/pluto/users/customizing).
-
-### 1. install.shの実行 / Running install.sh
-
-本リポジトリはpublicのため、HTTPS clone(`install.sh`既定)でそのまま取得できる。
-まずPi5へSSHでログインする(`<...>`の部分はご自身の環境の値に置き換える):
-
-This repository is public, so it can be fetched as-is with an HTTPS clone (the `install.sh` default).
-First log in to the Pi 5 via SSH (replace the `<...>` parts with values for your environment):
-
-```sh
-ssh <Pi5のユーザー名 / Pi 5 username>@<Pi5のIPアドレスまたはホスト名 / Pi 5 IP address or hostname>
-# 例 / Example: ssh pi@192.168.0.80
-```
-
-ログイン後、Pi5上で:
-
-After logging in, on the Pi 5:
-
-```sh
-# gitが未導入の場合は先に用意する(初回のみ)
-# Install git first if it is not installed yet (first time only)
-sudo apt-get update && sudo apt-get install -y git
-
-git clone https://github.com/kazushinjo/Shonan_Lite-RasPI5.git
-cd Shonan_Lite-RasPI5
-./pi5/scripts/install.sh
-```
-
-`install.sh`自身も0/9でgit未導入の場合は自動導入する。以降のアップデート時も
-このコマンドを再実行するだけでよい(`REPO_BRANCH`環境変数で取得するブランチを
-指定できる。既定は`main`)。
-
-`install.sh` itself also installs git automatically at step 0/9 if it is missing. For later updates,
-simply re-run this command (the branch to fetch can be specified with the `REPO_BRANCH` environment
-variable; the default is `main`).
-
-★自分のフォークやプライベートなミラーからSSH経由で取得したい場合は、
-`REPO_URL=git@github.com:<user>/<repo>.git ./pi5/scripts/install_ssh.sh`を使う
-(SSH鍵が未登録ならその場で生成し、GitHubへの登録案内を表示して終了する)。
-
-★To fetch from your own fork or a private mirror over SSH, use
-`REPO_URL=git@github.com:<user>/<repo>.git ./pi5/scripts/install_ssh.sh`
-(if no SSH key is registered, it generates one on the spot, shows instructions for registering it
-with GitHub, and exits).
-
-Pi5がGitHubへ到達できない環境(オフライン現場等)では、scp/USB等で転送済みの
-ローカルクローンから展開する`install_local.sh`を使う(GitHubへのアクセスは
-一切発生しない)。ソース取得部分がgit clone/pullではなくrsyncでのローカル
-コピーに変わる以外は`install.sh`と同じ:
-
-Where the Pi 5 cannot reach GitHub (e.g. offline sites), use `install_local.sh`, which installs from
-a local clone already transferred via scp/USB etc. (no access to GitHub occurs at all). It is the same
-as `install.sh` except that the source is obtained by a local rsync copy instead of git clone/pull:
-
-```sh
-./pi5/scripts/install_local.sh
-```
-
-さらに、PC側(Windows Git Bash/Mac/Linux)にあらかじめ作っておいたローカル
-クローンから、Pi5への転送とインストールを1コマンドで行う`deploy_to_pi5.sh`
-もある。PC側でこのリポジトリをclone済みの状態で:
-
-There is also `deploy_to_pi5.sh`, which transfers and installs to the Pi 5 in a single command from a
-local clone prepared on your PC (Windows Git Bash/Mac/Linux). With this repository cloned on the PC:
-
-```sh
-./pi5/scripts/deploy_to_pi5.sh
-# Pi5のIPアドレス/ホスト名: 192.168.1.50   ← 入力 / enter
-# Pi5のユーザー名 [pi]:                    ← 入力(空Enterでpi) / enter (empty Enter = pi)
-```
-
-を実行すると、Pi5のIPアドレス・ユーザー名の入力だけで、
-1. ローカルクローンの中身(`.git`除く)をtar+ssh経由でPi5の`~/shonan-pi5-src`へ転送
-2. Pi5上で`install_local.sh`を実行
-
-まで自動で進む。追加ツール(sshpass/rsync)は使わず標準のssh/scp/tarのみで
-動くため、Pi5への接続が発生する上記1・2のタイミングでそれぞれ標準のsshパス
-ワードプロンプトが表示され、都度パスワードの入力が必要(合計2回。ビルドが
-長時間に及ぶ場合、`sudo`のキャッシュが切れて追加でパスワードを求められる
-こともある)。都度の入力自体を無くしたい場合はPi5にSSH公開鍵を登録し、
-パスワード認証を使わない構成にする。
-
-Just by entering the Pi 5 IP address and username, it automatically:
-1. Transfers the contents of the local clone (excluding `.git`) to `~/shonan-pi5-src` on the Pi 5 via tar+ssh
-2. Runs `install_local.sh` on the Pi 5
-
-It uses only standard ssh/scp/tar with no extra tools (sshpass/rsync), so the standard ssh password
-prompt appears at each of steps 1 and 2 above, where a connection to the Pi 5 is made, and you need
-to enter the password each time (twice in total; if the build takes a long time, the `sudo` cache may
-expire and ask for the password again). To avoid entering it every time, register an SSH public key
-on the Pi 5 and do not use password authentication.
-
-`SHONAN_INSTALL_DIR`・`SKIP_JA_KEYBOARD`・`SKIP_GNURADIO_BUILD`・
-`SKIP_LANGSTONE_BUILD`をPC側で環境変数指定すると、Pi5側の`install_local.sh`
-実行にもそのまま反映される:
-
-Environment variables `SHONAN_INSTALL_DIR`, `SKIP_JA_KEYBOARD`, `SKIP_GNURADIO_BUILD` and
-`SKIP_LANGSTONE_BUILD` set on the PC side are passed through to `install_local.sh` on the Pi 5:
-
-```sh
-SKIP_JA_KEYBOARD=1 SKIP_GNURADIO_BUILD=1 ./pi5/scripts/deploy_to_pi5.sh
-```
-
-日本語入力ビルド・受信(RX)用GNU Radio/gr-dvbs2rxビルド・Langstone V3ビルドは
-それぞれ省略して時間短縮できる(省略した機能は使えなくなる):
-
-The Japanese input build, the GNU Radio/gr-dvbs2rx build for reception (RX) and the Langstone V3
-build can each be skipped to save time (skipped features will not be available):
-
-```sh
-SKIP_JA_KEYBOARD=1 SKIP_GNURADIO_BUILD=1 SKIP_LANGSTONE_BUILD=1 ./pi5/scripts/install.sh
-```
-
-環境変数で挙動を変更できる。
-
-The behavior can be changed with environment variables.
-
-| 変数 / Variable | 既定値 / Default | 効果 / Effect |
-| --- | --- | --- |
-| `SHONAN_INSTALL_DIR` | `$HOME/shonan-pi5` | リポジトリのclone/pull(またはコピー)先ディレクトリ<br>Directory the repository is cloned/pulled (or copied) into |
-| `LOCAL_SOURCE_DIR` | (未設定 / unset) | 設定時、ソース取得をGitHubのclone/pullではなく指定ディレクトリからのrsyncコピーに切り替える(`install_local.sh`が自動設定)<br>When set, obtains the source by rsync copy from the given directory instead of clone/pull from GitHub (set automatically by `install_local.sh`) |
-| `QTVK_BUILD_DIR` | `/tmp/qtvirtualkeyboard-src` | Qt Virtual Keyboardのビルド作業ディレクトリ<br>Build working directory for Qt Virtual Keyboard |
-| `GR_DVBS2RX_BUILD_DIR` | `$HOME/gr-dvbs2rx` | gr-dvbs2rxのビルド作業ディレクトリ<br>Build working directory for gr-dvbs2rx |
-| `SKIP_JA_KEYBOARD` | `0` | `1`で日本語入力ビルド(3/9)を省略<br>`1` skips the Japanese input build (3/9) |
-| `SKIP_GNURADIO_BUILD` | `0` | `1`で受信(RX)用GNU Radio/gr-dvbs2rxビルド(4/9)を省略(受信機能は動作しなくなる)<br>`1` skips the GNU Radio/gr-dvbs2rx build for reception (4/9) (reception will not work) |
-| `SKIP_LANGSTONE_BUILD` | `0` | `1`でLangstone V3のビルド(5/9)を省略<br>`1` skips the Langstone V3 build (5/9) |
-
-`install.sh`は以下の9ステップを順に実行する(`set -euo pipefail`のため、
-いずれかが失敗した時点で即座に停止する)。
-
-`install.sh` runs the following 9 steps in order (because of `set -euo pipefail`, it stops
-immediately as soon as any step fails).
-
-| ステップ / Step | 内容 / Description |
-| --- | --- |
-| 0/9 | 前提条件の確認(git/SSH鍵の有無を確認し、無ければ案内して終了)<br>Check prerequisites (checks for git/SSH key; if missing, shows guidance and exits) |
-| 1/9 | ソース取得(`git clone`または`git pull`)<br>Fetch the source (`git clone` or `git pull`) |
-| 2/9 | 実行時依存パッケージのインストール(apt)<br>Install runtime dependency packages (apt) |
-| 3/9 | 日本語入力(OpenWnn)対応版Qt Virtual Keyboardのビルド(既定で実施、実測10〜20分程度)<br>Build Qt Virtual Keyboard with Japanese input (OpenWnn) support (done by default, about 10–20 minutes measured) |
-| 4/9 | 受信(RX)用GNU Radio + gr-dvbs2rxの導入<br>Install GNU Radio + gr-dvbs2rx for reception (RX) |
-| 5/9 | Langstone V3(SDRトランシーバー)のビルド<br>Build Langstone V3 (SDR transceiver) |
-| 6/9 | 起動時コンソール表示の抑制<br>Suppress the console display at boot |
-| 7/9 | reboot/shutdown/起動アプリ切替のパスワード無し実行を許可(sudoers.d)<br>Allow reboot/shutdown/boot-app switching without a password (sudoers.d) |
-| 8/9 | 電源電圧警告(稲妻アイコン)表示の抑制(`/boot/firmware/config.txt`)<br>Suppress the under-voltage warning (lightning icon) (`/boot/firmware/config.txt`) |
-| 9/9 | systemdサービス登録(`shonan-gui.service`/`langstone.service`/`shonan-boot-menu.service`)<br>Register systemd services (`shonan-gui.service`/`langstone.service`/`shonan-boot-menu.service`) |
-
-途中で通信・電源が切れない環境で実行すること。完了後、起動のたびに
-「Shonan_Lite / Langstone V3」を選ぶ全画面メニュー
-(`shonan-boot-menu.service`)が自動起動する。選んだ側の`shonan-gui.service`/
-`langstone.service`をsystemdに登録・起動する。あわせて
-`/boot/firmware/config.txt`へ`avoid_warnings=1`(電源電圧警告アイコンの表示抑制)
-を未設定なら自動で追記する(反映には再起動が必要)。
-
-Run it in an environment where the network and power will not be interrupted. After completion,
-a full-screen menu for choosing "Shonan_Lite / Langstone V3" (`shonan-boot-menu.service`) starts
-automatically at every boot, and the selected `shonan-gui.service`/`langstone.service` is registered
-with systemd and started. It also appends `avoid_warnings=1` (suppresses the under-voltage warning
-icon) to `/boot/firmware/config.txt` if not already set (a reboot is required for it to take effect).
-
-### インストール後の確認 / After installation
-
-インストールが終わったら、まず実機のホーム画面から「ヘルプ」を開いて
-使い方を確認する。画面構成、送受信の基本操作、設定項目、トラブルシュー
-ティング等の各章が実機の現在の仕様に合わせてまとまっている。
-
-After installation, first open "Help" from the Home screen on the device and review how to use it.
-Chapters on the screen layout, basic TX/RX operation, settings, troubleshooting and more are kept up
-to date with the current behavior of the device.
-
-## 実機LCDの画面キャプチャー / Capturing the device LCD screen
-
-### アプリ内蔵のスクリーンショット機能(推奨) / Built-in screenshot function (recommended)
-
-Shonan_Lite(GUI)は起動中、Unixドメインソケット`/tmp/shonan-pi5-gui.sock`でコマンドを受け付ける。
-`screenshot`を送ると、表示中の画面を`/tmp/shonan_lcd_actual.png`に保存する(GUIは止まらない)。
-`navigate:<画面名>`で任意の画面へ移動できる(画面名: `home` `tx` `rx` `frequency` `rssi`
-`symbolrate` `fec` `modulation` `videosource` `streamoutput` `rxgain` `txpower` `manual`
-`settings` `testequipment` `presets`)。
-`volume:<増減>`(例: `volume:+2`)は、ロータリーエンコーダを回したときと同じ音量変更を行う(音量ポップアップの確認用)。
-
-While running, Shonan_Lite (GUI) accepts commands on the Unix domain socket `/tmp/shonan-pi5-gui.sock`.
-Sending `screenshot` saves the current screen to `/tmp/shonan_lcd_actual.png` (the GUI does not stop).
-`navigate:<screen>` moves to any screen (screens: `home` `tx` `rx` `frequency` `rssi`
-`symbolrate` `fec` `modulation` `videosource` `streamoutput` `rxgain` `txpower` `manual`
-`settings` `testequipment` `presets`).
-`volume:<delta>` (e.g. `volume:+2`) changes the volume the same way as turning the rotary encoder (for checking the volume popup).
-
-```bash
-python3 -c "import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect('/tmp/shonan-pi5-gui.sock'); s.sendall(sys.argv[1].encode()); s.close()" navigate:rssi
-python3 -c "import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect('/tmp/shonan-pi5-gui.sock'); s.sendall(sys.argv[1].encode()); s.close()" screenshot
-```
-
-起動直後は「アプリ起動時にPlutoも再起動しています…」の表示(最大25秒)が写ることがあるので、
-起動から30秒ほど待ってから撮る。
-
-Right after startup, the message "Rebooting the Pluto as the app starts…" (up to 25 seconds) may be
-captured, so wait about 30 seconds after startup before taking a screenshot.
-
-### kmsgrabによる取得 / Capturing with kmsgrab
-
-Shonan_LiteはLCDへQt/DRMで直接描画しているため、`/dev/fb0`を読み出す方法では
-起動コンソールなど、最終合成前の内容になることがある(素の色1色などになる)。
-実際にLCDへ表示されている画面を取得する場合は、KMSのCRTC/Planeを指定して
-`ffmpeg`の`kmsgrab`を使う。
-
-Because Shonan_Lite draws directly to the LCD via Qt/DRM, reading `/dev/fb0` may give content from
-before final composition, such as the boot console (e.g. a single plain color). To capture what is
-actually displayed on the LCD, use `ffmpeg`'s `kmsgrab` specifying the KMS CRTC/Plane.
-
-★`/dev/dri/card0`はモードセッティング非対応のスタブデバイスで、これを指定すると
-`kmsgrab`が`Failed to set universal planes capability`/`Operation not supported`
-で失敗する(実機で確認)。DSIパネルを実際に駆動しているのは**`/dev/dri/card1`**
-なので、必ずこちらを指定する。
-
-★`/dev/dri/card0` is a stub device without mode-setting support; specifying it makes `kmsgrab` fail
-with `Failed to set universal planes capability`/`Operation not supported` (confirmed on the device).
-The DSI panel is actually driven by **`/dev/dri/card1`**, so always specify that one.
-
-まず実機で現在のCRTC/Plane IDを確認する(再起動などでIDが変わる場合がある):
-
-First check the current CRTC/Plane IDs on the device (the IDs may change after a reboot, etc.):
-
-```bash
-kmsprint
-```
-
-現在の実機ではCRTC IDが`36`、Plane IDが`34`なので、以下でLCD画面をPNG化できる。
-`sudo`のパスワード入力が必要になる。
-
-On the current device the CRTC ID is `36` and the Plane ID is `34`, so the following saves the LCD
-screen as a PNG. You will need to enter the `sudo` password.
-
-```bash
-sudo ffmpeg -y -hide_banner \
-  -f kmsgrab -device /dev/dri/card1 \
-  -crtc_id 36 -plane_id 34 -framerate 1 -i - \
-  -vf hwdownload,format=bgr0 -frames:v 1 -update 1 /tmp/shonan_lcd_actual.png
-```
-
-MacなどのPCへコピーする:
-
-Copy it to a PC such as a Mac:
-
-```bash
-scp pi@<Pi5のIPアドレス / Pi 5 IP address>:/tmp/shonan_lcd_actual.png \
-  ~/Desktop/shonan_lcd_actual.png
-```
-
-`/dev/fb0`の直接取得は、LCDの最終表示を取得できない場合があるため、実機LCDの
-スクリーンショットには使用しない。
-
-Reading `/dev/fb0` directly may not capture the final LCD image, so do not use it for screenshots
-of the device LCD.
-
-### 実行条件 / Requirements
-
-一般ユーザーが実行して`install.sh`が正常完了するには、以下が必要。
-
-- **Raspberry Pi OS 64bit(aarch64)であること**(32bit版不可)
-- **`git`が事前にインストール済み**であること
-- **GitHub/apt配布ミラーへのインターネット到達性**
-- **sudoが使える対話的な実行**(パスワード入力に応答できるtty)
-- **`patch`コマンドが使えること**
-
-詳細な各手順の解説・トラブルシュートは
-[`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)
-(DOCX版: `pi5/docs/install_script_guide.docx`)を参照。
-
-For `install.sh` to complete successfully when run by a regular user, the following are required:
-
-- **Raspberry Pi OS 64-bit (aarch64)** (the 32-bit version is not supported)
-- **`git` installed beforehand**
-- **Internet access to GitHub and the apt mirrors**
-- **Interactive execution with sudo available** (a tty that can answer password prompts)
-- **The `patch` command available**
-
-For a detailed explanation of each step and troubleshooting, see
-[`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)
-(DOCX version: `pi5/docs/install_script_guide.docx`, in Japanese).
-
-## Langstone V3(SDRトランシーバー)への切替 / Switching to Langstone V3 (SDR transceiver)
-
-Pi5起動後にまず表示される「起動するアプリを選択してください」メニュー
-(`shonan-boot-menu.service`)、またはShonan_Lite Home画面の「Langstone V3」
-ボタンから、[g4eml/Langstone-V3](https://github.com/g4eml/Langstone-V3)
-(VHF/UHF/マイクロ波帯SDRトランシーバー、ADALM-Pluto対応)へ切り替えられる。
-Langstone V3はQt eglfsとは別に`/dev/fb0`を直接描画する独立アプリのため、
-DATV送受信アプリとは同時起動できないが、**`shonan-gui.service`/
-`langstone.service`/`shonan-boot-menu.service`がsystemdの`Conflicts=`で
-互いに排他制御されているため、Pi5自体のrebootは不要**で
-`systemctl start`だけで即座に切り替わる(以前はPi5ごとrebootしていたが、
-`shonan-boot-menu.service`導入により不要になった)。
-
-- Shonan_Lite Home画面の「Langstone V3」ボタン → Langstone V3が起動
-  (現在稼働中のShonan_Liteプロセスはsystemdが自動停止)
-- Langstone V3の設定メニュー内「BACK TO SHONAN_LITE」ボタン →
-  Shonan_Lite Home画面に戻る
-
-From the "Select the app to start" menu shown first after the Pi 5 boots (`shonan-boot-menu.service`),
-or from the "Langstone V3" button on the Shonan_Lite Home screen, you can switch to
-[g4eml/Langstone-V3](https://github.com/g4eml/Langstone-V3) (a VHF/UHF/microwave SDR transceiver
-supporting the ADALM-Pluto). Langstone V3 is a standalone app that draws directly to `/dev/fb0`,
-separately from Qt eglfs, so it cannot run at the same time as the DATV app. However,
-**`shonan-gui.service`/`langstone.service`/`shonan-boot-menu.service` are mutually exclusive via
-systemd `Conflicts=`, so no reboot of the Pi 5 is needed**; a `systemctl start` switches immediately
-(previously the whole Pi 5 was rebooted, but this became unnecessary with `shonan-boot-menu.service`).
-
-- "Langstone V3" button on the Shonan_Lite Home screen → Langstone V3 starts
-  (systemd automatically stops the running Shonan_Lite process)
-- "BACK TO SHONAN_LITE" button in the Langstone V3 settings menu →
-  returns to the Shonan_Lite Home screen
-
-切替時にPlutoは**再起動しない**
-(以前は切替のたびにPlutoを再起動しており、数十秒かかっていた)。実機試験で、
-DATV→Langstone→DATVとPlutoを再起動せずに切り替えても、Langstoneの送受信と
-DATVの送受信(オンデバイス復調による自局信号のロック)が正常に動くことを確認した。
-ただしLangstoneは受信中にPlutoの送信LO(`altvoltage1`)をpowerdownしたまま終了し、
-そのままではDATV送信の電波が出ないため、「GOTO SHONAN_LITE」で戻るときは
-Langstone側とShonan_Lite側の両方で送信LOを元に戻す。
-Langstoneからの切替であることは`/tmp/shonan_switch_from_langstone`で伝え、
-Shonan_Liteはこれがあるときだけ起動時のPluto再起動を省く(使ったら消すので、
-その後のアプリ再起動やPi5の電源投入時は従来どおり再起動する)。Langstone側の
-`run_pluto`は`/tmp/langstone_goto_shonan`があるとき、終了後のPluto再起動を省く。Plutoが`fmcomms2_source: Unable to refill buffer`のように
-詰まった場合は、Home画面の「アプリ再起動」(Plutoも再起動する)で復旧できる。
-
-The Pluto is **not rebooted** when switching
-(previously the Pluto was rebooted on every switch, which took tens of seconds). Device testing
-confirmed that after switching DATV → Langstone → DATV without rebooting the Pluto, both Langstone
-TX/RX and DATV TX/RX (locking onto the station's own signal with on-device demodulation) work
-correctly. However, Langstone exits with the Pluto's TX LO (`altvoltage1`) still powered down while
-receiving, which would leave DATV transmission with no RF output, so when returning via
-"GOTO SHONAN_LITE" both the Langstone side and the Shonan_Lite side restore the TX LO.
-A switch from Langstone is signaled by `/tmp/shonan_switch_from_langstone`, and Shonan_Lite skips the
-Pluto reboot at startup only when it exists (it is deleted after use, so later app restarts and Pi 5
-power-ups reboot the Pluto as before). On the Langstone side, `run_pluto` skips the Pluto reboot after
-exiting when `/tmp/langstone_goto_shonan` exists. If the Pluto gets stuck, e.g. with
-`fmcomms2_source: Unable to refill buffer`, it can be recovered with "Restart App" on the Home screen
-(which also reboots the Pluto).
-
-内部的には`~/.pi5_boot_mode_langstone`マーカーファイルの有無をsystemdの
-`ConditionPathExists`で判定し、`shonan-gui.service`/`langstone.service`の
-どちらを起動すべきかを決める(ブート時だけでなく、アプリ内からの切替時にも
-マーカーを書き換えてから対象サービスを直接startする)。
-
-Internally, systemd's `ConditionPathExists` checks for the `~/.pi5_boot_mode_langstone` marker file
-to decide whether `shonan-gui.service` or `langstone.service` should start (not only at boot; when
-switching from within an app, the marker is rewritten and the target service is started directly).
-
-ウォーターフォール/スペクトラム表示は幅約512px→約790pxへ拡張済み
-(FFT点数自体はGNU Radio側のfft_size=512のまま、SCALEPX()マクロで描画のみ
-引き伸ばしている。帯域インジケータ・目盛り・タッチ判定も含め一貫して変換)。
-横方向にはSQLボタン(x=30〜130)/Volボタン(x=660〜)と同じY帯で重なり広げる
-余地が無かったため、スペクトラム欄の高さ(80→55px)とウォーターフォールの
-表示履歴行数(130→90行)を縮めて表示位置を上に詰め、SQL/Vol/RITいずれとも
-Y方向に重ならない帯(Y=130〜295)に収めることで横方向をほぼ画面全幅まで
-広げた(実機で確認、詳細は下記パッチ参照)。
-詳細は
-[`pi5/docs/patches/langstone_v3_shonan_lite.patch`](pi5/docs/patches/langstone_v3_shonan_lite.patch)
-(upstream差分)を参照。
-
-The waterfall/spectrum display has been widened from about 512 px to about 790 px
-(the number of FFT points stays at fft_size=512 on the GNU Radio side; only the drawing is stretched
-by the SCALEPX() macro, applied consistently to the bandwidth indicator, scale and touch detection).
-Since there was no room to widen it horizontally in the same Y band as the SQL button (x=30–130) and
-Vol button (x=660–), the spectrum area height (80 → 55 px) and the number of waterfall history rows
-(130 → 90) were reduced and the display moved up, fitting it into a band (Y=130–295) that does not
-overlap SQL/Vol/RIT vertically, which allows it to extend to nearly the full screen width (confirmed
-on the device). For details, see
-[`pi5/docs/patches/langstone_v3_shonan_lite.patch`](pi5/docs/patches/langstone_v3_shonan_lite.patch)
-(diff against upstream).
-
-起動直後の受信設定の取りこぼしも修正済み。本家のGUIは、GNU Radioフローグラフが
-受信設定用のFIFO(`/tmp/langstoneTRx`)を開く前にモード・フィルタ・オフセット等を送り、
-届かなかった分を捨てていた。そのためフローグラフが初期値(USB・オフセット0等)のまま動き、
-Sメーター・ノイズレベルが本来より高く出ることがあった(Shonan_Liteから切り替えた直後に
-S2前後、MODEやBANDを操作し直すとS0になる、を実機で確認)。オフセット0ではLO直上に出る
-PlutoのDC成分(DCのこぶ)を受信帯域内で拾うためで、正しい値はS0の方
-(本来はLOを+50 kHzずらしてDC成分を避ける。TX→40 dBアッテネータ→RXの無信号状態でS0)。
-起動時にフローグラフがFIFOを開くまで(最大20秒)待ってから設定を送るようにした
-(`waitForFlowgraph()`)。なおSメーターの0点(`S-Meter Zero`)は既定値-80のままで、
-絶対レベル(S9=-73 dBm等)としては未校正。
-
-The loss of receive settings right after startup has also been fixed. The upstream GUI sent the mode,
-filters, offset, etc. before the GNU Radio flowgraph opened its settings FIFO (`/tmp/langstoneTRx`)
-and discarded whatever could not be delivered, so the flowgraph kept running with its defaults
-(USB, offset 0, etc.) and the S-meter and noise level could read higher than they should (confirmed
-on the device: about S2 right after switching from Shonan_Lite, S0 after pressing MODE or BAND again).
-With offset 0 the receiver picks up the Pluto's DC component (the DC hump right at the LO) inside the
-passband, so S0 is the correct reading (normally the LO is shifted by +50 kHz to avoid the DC
-component; with TX → 40 dB attenuator → RX and no signal it reads S0).
-At startup it now waits until the flowgraph opens the FIFO (up to 20 s) before sending the settings
-(`waitForFlowgraph()`). Note that the S-meter zero (`S-Meter Zero`) is still at its default of -80,
-so it is not calibrated as an absolute level (e.g. S9 = -73 dBm).
-
-`g4eml/Langstone-V3`本家が更新された場合、`pi5/third_party/Langstone-V3/`を
-直接上書きすると上記の改造が失われる。
-[`pi5/scripts/update_langstone_from_upstream.sh`](pi5/scripts/update_langstone_from_upstream.sh)
-を実行すると、本家を読み取り専用でclone → このパッチを適用 →
-成功した場合のみ`pi5/third_party/Langstone-V3/`を置き換える(本家への
-書き込みは一切行わない)。パッチが当たらない場合は改造箇所と本家の変更が
-衝突しているため、エラーで止まり手動マージが必要になる。
-
-When upstream `g4eml/Langstone-V3` is updated, overwriting `pi5/third_party/Langstone-V3/` directly
-would lose the modifications above. Running
-[`pi5/scripts/update_langstone_from_upstream.sh`](pi5/scripts/update_langstone_from_upstream.sh)
-clones upstream read-only → applies this patch → replaces `pi5/third_party/Langstone-V3/` only if
-that succeeds (nothing is ever written to upstream). If the patch does not apply, the modifications
-conflict with upstream changes; it stops with an error and a manual merge is required.
-
-### 10GHz受信(LNB) — Home画面の衛星をタップ / 10 GHz reception (LNB) — tap the satellite on the Home screen
-
-Home画面の背景右側の衛星をタップすると、Langstone V3を**10GHz受信用のバンド**で
-開く(普通の「Langstone」カードと同じく、Plutoは再起動しない)。アンテナ側で
-**LNB(局部発振 9750 MHz)**により周波数を下げて受信する前提の設定で、
-LangstoneのトランスバーターのオフセットとしてLNBの局部発振周波数を設定している。
-
-Tapping the satellite on the right side of the Home screen background opens Langstone V3 on a
-**band for 10 GHz reception** (as with the normal "Langstone" card, the Pluto is not rebooted).
-The settings assume the frequency is down-converted at the antenna by an **LNB (local oscillator
-9750 MHz)**, and the LNB local oscillator frequency is set as Langstone's transverter offset.
-
-| 項目 / Item | 値 / Value |
-| --- | --- |
-| 画面の表示周波数<br>Displayed frequency | 10236.500 MHz(10.2365 GHz、画面に「XVTR」と表示)<br>10236.500 MHz (10.2365 GHz, "XVTR" shown on screen) |
-| Plutoの受信周波数<br>Pluto receive frequency | 486.5 MHz(= 10236.5 − 9750) |
-| 受信オフセット<br>Receive offset | −9750 MHz(LNB 局部発振 9750 MHz)<br>−9750 MHz (LNB local oscillator 9750 MHz) |
-| 受信モード<br>Receive mode | 固定しない(Langstoneの「MODE」でUSB/FM/CW等を選べる)<br>Not fixed (USB/FM/CW etc. can be selected with Langstone's "MODE") |
-| 送信<br>Transmit | **不可**(受信専用)<br>**Not possible** (receive only) |
-
-- Langstoneの24バンドのうち、通常使われない最後のバンド(番号23、画面上は24番目)を
-  このために使う。衛星をタップするたびに、Shonan_Liteが`~/Langstone/Langstone_Pluto.conf`
-  のこのバンドを上の値に設定し直してから開く([`pi5/gui/langstone_config.py`](pi5/gui/langstone_config.py))。
-- 486.5 MHzはアマチュアバンド外のため、このバンドは**受信専用**
-  (設定ファイルの`bandRxOnly23 1`、Langstone側の改造)。画面のPTT・ハードウェアPTT・
-  CWキー・ビーコンのいずれでも送信せず。
-  PTTボタンは灰色の「RX ONLY」表示になり、Plutoの送信LOも停止させる。
-- 普通の「Langstone」カードで開いたときは、衛星から開く前に使っていたバンドに戻して開く
-  (Langstone上で別のバンドに切り替えていた場合は、そのバンドのまま)。
-- LNBへの電源供給(同軸経由のバイアスT、12〜18 V)はShonan_Lite/Langstoneでは扱わない。
-  別途用意すること。
-- Shonan_Lite(DATV)で10GHzをLNB受信する場合は、衛星ではなく周波数画面の「10GHz帯」を押し、
-  「LNBを使用しますか?」で「はい」を選ぶ(表示10.2365 GHz、Pluto受信486.5 MHz、受信専用で送信不可。
-  受信画面・RSSI測定もPluto受信周波数で動作する)。他のバンドを選ぶとLNBは解除される。
-
-<!-- English -->
-
-- Of Langstone's 24 bands, the last one, which is not normally used (number 23, the 24th on screen),
-  is used for this. Every time the satellite is tapped, Shonan_Lite resets this band in
-  `~/Langstone/Langstone_Pluto.conf` to the values above before opening
-  ([`pi5/gui/langstone_config.py`](pi5/gui/langstone_config.py)).
-- Because 486.5 MHz is outside the amateur bands, this band is **receive only**
-  (`bandRxOnly23 1` in the configuration file, a modification on the Langstone side). It does not
-  transmit from the on-screen PTT, hardware PTT, CW key or beacon. The PTT button is shown grayed out as "RX ONLY", and the
-  Pluto's TX LO is also stopped.
-- When opened from the normal "Langstone" card, it returns to the band that was in use before opening
-  from the satellite (if you switched to another band in Langstone, it stays on that band).
-- Power for the LNB (bias-T over the coax, 12–18 V) is not handled by Shonan_Lite/Langstone.
-  Provide it separately.
-- To receive 10 GHz via an LNB in Shonan_Lite (DATV), press "10GHz Band" on the Frequency screen
-  (not the satellite) and answer "Yes" to "Use an LNB?" (displayed 10.2365 GHz, Pluto RX 486.5 MHz,
-  receive only with no transmit; the RX screen and RSSI measurement also use the Pluto RX frequency).
-  Selecting another band cancels the LNB.
-
-## PA/LNAの送受信切替 / PA/LNA TX/RX switching
-
-RasPI5からのPTT ON信号でPA・LNAの送受信切替を制御できる。
-
-| 項目<br>Item | 内容<br>Details |
-| --- | --- |
-| 出力ピン<br>Output pin | Pi 5 GPIO21(40番ピン)、GNDは39番ピン<br>Pi 5 GPIO21 (pin 40), GND on pin 39 |
-| 論理<br>Logic | 送信中HIGH(3.3 V)、受信中LOW<br>HIGH (3.3 V) while transmitting, LOW while receiving |
-| 対象<br>Applies to | Shonan_Liteの送信・Langstone V3の送信(Langstone標準のTx Output)のどちらも同じピン<br>Both Shonan_Lite TX and Langstone V3 TX (Langstone's standard Tx Output) use the same pin |
-
-- GPIO21は3.3 Vロジックで電流を取れないため、トランジスタやリレードライバ等でバッファしてから
-  PA・LNA(同軸リレー等)を駆動すること。
-- Shonan_Liteは送信開始時(映像送出の前)にHIGH、送信停止時とアプリ起動時にLOWにする
-  ([`pi5/gui/backend.py`](pi5/gui/backend.py)の`_set_pi5_tx_gpio()`)。Langstone V3はHIGHにしてから
-  100 ms後に送信を始める。
-
-<!-- English -->
-
-The PA and LNA can be switched between TX and RX by the PTT ON signal from the RasPI5.
-
-- GPIO21 is a 3.3 V logic output that cannot supply current. Buffer it with a transistor, relay driver or
-  similar before driving the PA and LNA (coax relays, etc.).
-- Shonan_Lite sets it HIGH when TX starts (before the video is sent) and LOW when TX stops and at app startup
-  (`_set_pi5_tx_gpio()` in [`pi5/gui/backend.py`](pi5/gui/backend.py)). Langstone V3 starts transmitting
-  100 ms after setting it HIGH.
-
-## 関連ドキュメント / Related documents
-
-- [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md) — install.shの詳細ガイド / Detailed guide to install.sh(英語版 / English: [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))
-- [`pi5/docs/qtvirtualkeyboard_ja_build.md`](pi5/docs/qtvirtualkeyboard_ja_build.md) — 日本語オンスクリーンキーボードのビルド手順・ハマりどころ / Build steps and pitfalls for the Japanese on-screen keyboard
-- [`pi5/docs/shonan_pi5_operation_manual.docx`](pi5/docs/shonan_pi5_operation_manual.docx) — 操作説明書(各画面のスクリーンショット付き) / Operation manual (with screenshots of each screen)
-- [`pi5/gui/manual_content.py`](pi5/gui/manual_content.py) — アプリ内Helpの内容(章データ)。操作説明書もこれから生成する / Content of the in-app Help (chapter data); the operation manual is also generated from it
-- [`pi5/docs/build_operation_manual.py`](pi5/docs/build_operation_manual.py) — 操作説明書(DOCX)の生成スクリプト / Script that generates the operation manual (DOCX)
-  (`python pi5/docs/build_operation_manual.py`、python-docxが必要 / requires python-docx)
-- [`pi5/third_party/rpi-dvbs2-receiver-gui/`](pi5/third_party/rpi-dvbs2-receiver-gui/) — GNU Radio/gr-dvbs2rx受信フローグラフの参考実装(kazushinjo/rpi-dvbs2-receiver-guiより取り込み) / Reference implementation of the GNU Radio/gr-dvbs2rx receive flowgraph (imported from kazushinjo/rpi-dvbs2-receiver-gui)
+必要なもの: Raspberry Pi 5、Raspberry Pi OS **64-bit**、同じ LAN の Pluto(DATV ファーム)、任意で USB カメラ・オーディオ。
+/ Needs: Raspberry Pi 5, Raspberry Pi OS **64-bit**, a Pluto (DATV firmware) on the same LAN, optional USB camera/audio.
+
+1. Raspberry Pi Imager で Raspberry Pi OS (64-bit) を書き込み、SSH を有効にして起動する。 / Write Raspberry Pi OS (64-bit) with Raspberry Pi Imager, enable SSH, boot.
+2. Pluto の LAN の IP を決める(Pluto の USB ドライブの `config.txt` の `[USB_ETHERNET] ipaddr_eth`、取り出すと保存)。
+   / Set the Pluto LAN IP (`[USB_ETHERNET] ipaddr_eth` in `config.txt` on the Pluto USB drive; saved on eject).
+   詳細 / Details: [`pi5/docs/pluto_network.md`](pi5/docs/pluto_network.md)
+3. このリポジトリは**非公開**なので、PC に clone してから Pi 5 へ送ってインストールする(Pi 5 の IP とユーザー名を聞かれる)。
+   / This repository is **private**: clone it on a PC, then transfer and install to the Pi 5 (asks for the Pi 5 IP and user).
+
+   ```sh
+   git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git
+   cd Shonan-V2_Lite-RasPI5
+   ./pi5/scripts/deploy_to_pi5.sh
+   ```
+
+   Pi 5 に直接 clone 済みなら `./pi5/scripts/install_local.sh`。 / If already cloned on the Pi 5, run `./pi5/scripts/install_local.sh`.
+   `SKIP_JA_KEYBOARD=1`・`SKIP_GNURADIO_BUILD=1`・`SKIP_LANGSTONE_BUILD=1` で時間のかかる部分を省ける(その機能は使えなくなる)。
+   / These variables skip the long builds (the feature is then unavailable).
+4. 再起動すると Shonan_Lite / Langstone V3 を選ぶメニューが出る。設定画面で Pluto の IP を入れる。 / After reboot, a menu chooses Shonan_Lite / Langstone V3. Enter the Pluto IP on Config.
+
+> [!WARNING]
+> `install.sh`(GitHub から直接取る方法)は、既定で V1 のリポジトリ(Shonan_Lite-RasPI5)を取ってきます。V2 には使わないでください。
+> / `install.sh` (fetching from GitHub) defaults to the V1 repository (Shonan_Lite-RasPI5); do not use it for V2.
+
+手順の詳細とトラブル: [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)(英語 [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))。
+
+## Langstone V3 と 10GHz 受信 / Langstone V3 and 10 GHz reception
+
+- Home の「Langstone」で [g4eml/Langstone-V3](https://github.com/g4eml/Langstone-V3) に切り替え、Langstone の「GOTO SHONAN_LITE」で戻る。Pi 5・Pluto とも再起動しない。
+  / "Langstone" on Home switches to Langstone V3; "GOTO SHONAN_LITE" returns. Neither the Pi 5 nor the Pluto reboots.
+- Home の衛星をタップすると、10236.5 MHz 表示・Pluto 受信 486.5 MHz(LNB 局発 9750 MHz)の**受信専用**バンドで開く。LNB の電源は別に用意する。
+  / The satellite opens a **receive-only** band (10236.5 MHz shown, Pluto RX 486.5 MHz, LNB LO 9750 MHz). Power the LNB separately.
+- 改造点・内部の仕組み・本家の取り込み方: [`pi5/docs/langstone_v3_notes.md`](pi5/docs/langstone_v3_notes.md)。 / Modifications, internals and upstream updates: see that file.
+
+## PA/LNA の送受信切替 / PA/LNA switching
+
+Pi 5 の GPIO21(40番ピン、GND 39番)が送信中 HIGH(3.3 V)。Shonan_Lite と Langstone V3 の両方で同じピン。電流は取れないのでトランジスタ等で受けて PA・LNA を切り替える。
+/ GPIO21 (pin 40, GND pin 39) is HIGH (3.3 V) while transmitting, for both apps. Buffer it (transistor, relay driver) before driving the PA/LNA.
+
+## 関連ドキュメント / Documents
+
+- [`pi5/docs/shonan_pi5_operation_manual.docx`](pi5/docs/shonan_pi5_operation_manual.docx) — 操作説明書 / Operation manual(`pi5/docs/build_operation_manual.py` で [`pi5/gui/manual_content.py`](pi5/gui/manual_content.py) から作る / generated from the in-app help content)
+- [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md) — インストールの詳細 / Installation in detail
+- [`pi5/docs/pluto_network.md`](pi5/docs/pluto_network.md) — Pluto の LAN 設定 / Pluto network settings
+- [`pi5/docs/langstone_v3_notes.md`](pi5/docs/langstone_v3_notes.md) — Langstone V3・10GHz 受信の詳細 / Langstone V3 and 10 GHz details
+- [`pi5/docs/screen_capture.md`](pi5/docs/screen_capture.md) — 画面の撮り方 / Capturing the screen
+- [`pi5/docs/apsk_simulation.md`](pi5/docs/apsk_simulation.md) — APSK 受信のシミュレーション結果 / APSK RX simulation
+- [`pi5/docs/qtvirtualkeyboard_ja_build.md`](pi5/docs/qtvirtualkeyboard_ja_build.md) — 日本語キーボードのビルド / Japanese keyboard build
 
 ## 免責事項 / Disclaimer
 
