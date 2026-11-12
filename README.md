@@ -23,8 +23,11 @@ The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
 - **送信**: 周波数・シンボルレート(333〜2000 kS/s)・FEC・変調方式(QPSK/8PSK/16APSK/32APSK)・TX出力を画面で設定し、
   Pluto内の`pluto_dvb`でDVB-S2送信する。FECはDVB-S2の全28組み合わせから選べる
   (QPSK: 1/4〜9/10、8PSK: 3/5〜9/10、16APSK: 2/3〜9/10、32APSK: 3/4〜9/10)。
-  無印Pluto(datvplutofrm v0.39-dirty、ARMのソフト変調)とPluto+(Shonan版ファーム、FPGAの変調回路)の
+  無印Pluto(datvplutofrm v0.39-dirty、ARMのソフト変調)とPluto+(FPGA版ファーム`plutoplus-udp-fpga-firm`、FPGAの変調回路)の
   どちらでも同じ操作で送信できる。送信映像はフルHD(1920x1080)固定。
+  16APSK・32APSKは、Plutoのファームの版(IIOの`fw_version`)に**大文字の`FPGA`**が含まれるとき
+  (Pluto+のFPGA版ファーム、例: `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`)だけ選べる。それ以外のファームでは8PSKまで。
+  判定は大文字・小文字を区別するので、`fpga`(小文字)だけの版名では選べない。版は設定画面の「Pluto 情報」→「バージョン」で確かめられる。
 - **映像ソース**: USBカメラ・画像ファイル(静止画を反復送信)・テストパターンから選ぶ。カメラ選択時は
   「撮影」ボタンで静止画(JPG、`~/Pictures/Shonan_Lite/`)を撮り、そのまま送信画像に使える。
   コールサイン・備考を文字サイズ・文字色を選んで映像へ焼き込める(日時も表示)。
@@ -45,7 +48,11 @@ The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
 - **Transmit**: Set the frequency, symbol rate (333–2000 kS/s), FEC, modulation (QPSK/8PSK/16APSK/32APSK) and TX power on screen,
   and transmit DVB-S2 with `pluto_dvb` inside the Pluto. All 28 DVB-S2 MOD-CODs can be selected
   (QPSK: 1/4-9/10; 8PSK: 3/5-9/10; 16APSK: 2/3-9/10; 32APSK: 3/4-9/10). A plain Pluto (datvplutofrm v0.39-dirty,
-  software modulation on the ARM) and a Pluto+ (Shonan firmware, modulator in the FPGA) are operated the same way. The transmitted video is fixed at Full HD (1920x1080).
+  software modulation on the ARM) and a Pluto+ (FPGA firmware `plutoplus-udp-fpga-firm`, modulator in the FPGA) are operated the same way. The transmitted video is fixed at Full HD (1920x1080).
+  16APSK/32APSK can be selected only when the Pluto firmware version (IIO `fw_version`) contains an **upper-case `FPGA`**
+  (the Pluto+ FPGA firmware, e.g. `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`); with any other firmware the choice stops at 8PSK.
+  The check is case-sensitive, so a version name with only a lower-case `fpga` does not enable them. The version is shown under
+  "Pluto Info" → "Version" on the Config screen.
 - **Video source**: Choose from a USB camera, an image file (a still image transmitted repeatedly) or a test pattern.
   With the camera selected, the "Capture" button takes a still image (JPG, `~/Pictures/Shonan_Lite/`) that can be
   used directly as the transmit image. A callsign and a note can be burned into the video with a selectable
@@ -66,17 +73,39 @@ The application lives under `pi5/` (Python/PyQt5, rendered directly via eglfs).
 
 ## スクリーンショット / Screenshots
 
-実機(7インチLCD、800x480)の画面。映像はすべてテストパターンで撮影している。
+実機(7インチLCD、800x480)の画面(2026-11-12撮影、Version 2.0.0、Pluto+はFPGA版ファーム
+`plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`を接続)。送受信は止めた状態で撮っている。アプリの制御ソケット
+(`/tmp/shonan-pi5-gui.sock`の`navigate:<画面>`・`screenshot`)で画面を切り替えて撮影し、
+Langstone V3の画面はフレームバッファ(`/dev/fb0`)から取り込んだ。
 
-Screens from the actual device (7-inch LCD, 800x480). All video was captured using the test pattern.
+Screens from the actual device (7-inch LCD, 800x480, taken on 2026-11-12, Version 2.0.0, with a Pluto+ running the FPGA
+firmware `plutoplus-udp-fpga-firm_v1.0-FPGA-26a1`). TX and RX were stopped. The screens were switched and captured through
+the app's control socket (`navigate:<screen>` and `screenshot` on `/tmp/shonan-pi5-gui.sock`); the Langstone V3 screen
+was read from the frame buffer (`/dev/fb0`).
 
-| Home画面 / Home | 送信画面 / TX | 受信画面 / RX | RSSI測定 / RSSI |
-| --- | --- | --- | --- |
-| ![Home画面](pi5/docs/images/screenshot_home.png) | ![送信画面](pi5/docs/images/screenshot_tx.png) | ![受信画面](pi5/docs/images/screenshot_rx.png) | ![RSSI測定](pi5/docs/images/screenshot_rssi.png) |
+| Home画面 / Home | 送信画面 / TX | 受信画面 / RX |
+| --- | --- | --- |
+| ![Home画面](pi5/docs/images/screenshot_home.png) | ![送信画面](pi5/docs/images/screenshot_tx.png) | ![受信画面](pi5/docs/images/screenshot_rx.png) |
 
-| 映像ソース / Video source | 変調方式 / Modulation | 出力設定 / Stream output | プリセット / Presets |
-| --- | --- | --- | --- |
-| ![映像ソース](pi5/docs/images/screenshot_videosource.png) | ![変調方式](pi5/docs/images/screenshot_modulation.png) | ![出力設定](pi5/docs/images/screenshot_streamoutput.png) | ![プリセット](pi5/docs/images/screenshot_presets.png) |
+| 周波数 / Frequency | RSSI測定 / RSSI | シンボルレート / Symbol rate |
+| --- | --- | --- |
+| ![周波数](pi5/docs/images/screenshot_frequency.png) | ![RSSI測定](pi5/docs/images/screenshot_rssi.png) | ![シンボルレート](pi5/docs/images/screenshot_symbolrate.png) |
+
+| 誤り訂正 / FEC | 変調方式 / Modulation | 映像ソース / Video source |
+| --- | --- | --- |
+| ![誤り訂正](pi5/docs/images/screenshot_fec.png) | ![変調方式](pi5/docs/images/screenshot_modulation.png) | ![映像ソース](pi5/docs/images/screenshot_videosource.png) |
+
+| 出力設定 / Stream output | RXゲイン / RX gain | TX出力 / TX power |
+| --- | --- | --- |
+| ![出力設定](pi5/docs/images/screenshot_streamoutput.png) | ![RXゲイン](pi5/docs/images/screenshot_rxgain.png) | ![TX出力](pi5/docs/images/screenshot_txpower.png) |
+
+| 設定 / Config | 機器試験 / Diagnostic | プリセット / Presets |
+| --- | --- | --- |
+| ![設定](pi5/docs/images/screenshot_settings.png) | ![機器試験](pi5/docs/images/screenshot_testequipment.png) | ![プリセット](pi5/docs/images/screenshot_presets.png) |
+
+| ヘルプ / Help | Langstone V3 |
+| --- | --- |
+| ![ヘルプ](pi5/docs/images/screenshot_manual.png) | ![Langstone V3](pi5/docs/images/screenshot_langstone.png) |
 
 各画面の操作方法は、アプリ内の「ヘルプ」または操作説明書
 [`pi5/docs/shonan_pi5_operation_manual.docx`](pi5/docs/shonan_pi5_operation_manual.docx)を参照。
