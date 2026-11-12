@@ -173,9 +173,9 @@ add_numbered([
 d.add_heading("1. install.shの実行", level=1)
 add_para("SSH接続したPi5上で:")
 add_code_block([
-    "git clone https://github.com/kazushinjo/Shonan_Lite-RasPI5.git",
-    "cd Shonan_Lite-RasPI5",
-    "./pi5/scripts/install.sh          # HTTPSでclone(既定。publicなので認証不要)",
+    "git clone https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git",
+    "cd Shonan-V2_Lite-RasPI5",
+    "./pi5/scripts/install.sh          # HTTPSでclone(既定。privateなのでGitHubの認証が要る)",
     "# ./pi5/scripts/install_ssh.sh    # GitHubにSSH鍵を登録済みならこちらでも可",
     "# ./pi5/scripts/install_local.sh  # 既にあるローカルクローンから展開する場合",
 ])
@@ -208,7 +208,7 @@ add_bullets([
     "patchコマンドが使えること",
 ])
 add_para(
-    "gitが無い場合は0/9で自動導入する。リポジトリはpublicのためGitHubの認証は不要。"
+    "gitが無い場合は0/9で自動導入する。リポジトリはprivateのため、HTTPSではGitHubの認証が要る(SSH鍵を登録してinstall_ssh.shを使うか、PCでcloneしてdeploy_to_pi5.shで入れる)。"
     "詳細な各手順の解説・トラブルシュートはpi5/docs/install_script_guide.md"
     "(英語版: install_script_guide_en.md)を参照。"
 )

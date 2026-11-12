@@ -8,5 +8,5 @@
 #   SKIP_GNURADIO_BUILD=1 ./pi5/scripts/install_ssh.sh
 set -euo pipefail
 
-export REPO_URL="git@github.com:kazushinjo/Shonan_Lite-RasPI5.git"
+export REPO_URL="git@github.com:kazushinjo/Shonan-V2_Lite-RasPI5.git"
 exec "$(dirname "$(readlink -f "$0")")/install.sh" "$@"

@@ -71,13 +71,11 @@ How they were taken: [`pi5/docs/screen_capture.md`](pi5/docs/screen_capture.md).
    ```
 
    Pi 5 に直接 clone 済みなら `./pi5/scripts/install_local.sh`。 / If already cloned on the Pi 5, run `./pi5/scripts/install_local.sh`.
+   Pi 5 に GitHub の SSH 鍵を登録してあれば、Pi 5 上で `./pi5/scripts/install_ssh.sh` でも入れられる(このリポジトリから取る)。
+   / With a GitHub SSH key registered on the Pi 5, `./pi5/scripts/install_ssh.sh` on the Pi 5 also works (fetches this repository).
    `SKIP_JA_KEYBOARD=1`・`SKIP_GNURADIO_BUILD=1`・`SKIP_LANGSTONE_BUILD=1` で時間のかかる部分を省ける(その機能は使えなくなる)。
    / These variables skip the long builds (the feature is then unavailable).
 4. 再起動すると Shonan_Lite / Langstone V3 を選ぶメニューが出る。設定画面で Pluto の IP を入れる。 / After reboot, a menu chooses Shonan_Lite / Langstone V3. Enter the Pluto IP on Config.
-
-> [!WARNING]
-> `install.sh`(GitHub から直接取る方法)は、既定で V1 のリポジトリ(Shonan_Lite-RasPI5)を取ってきます。V2 には使わないでください。
-> / `install.sh` (fetching from GitHub) defaults to the V1 repository (Shonan_Lite-RasPI5); do not use it for V2.
 
 手順の詳細とトラブル: [`pi5/docs/install_script_guide.md`](pi5/docs/install_script_guide.md)(英語 [`install_script_guide_en.md`](pi5/docs/install_script_guide_en.md))。
 

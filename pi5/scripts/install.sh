@@ -46,7 +46,7 @@
 #     再実行する。LOCAL_SOURCE_DIR指定時はこの節自体を省略する)
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/kazushinjo/Shonan_Lite-RasPI5.git}"
+REPO_URL="${REPO_URL:-https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 INSTALL_DIR="${SHONAN_INSTALL_DIR:-$HOME/shonan-pi5}"
 QTVK_BUILD_DIR="${QTVK_BUILD_DIR:-/tmp/qtvirtualkeyboard-src}"

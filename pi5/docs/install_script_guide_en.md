@@ -37,7 +37,7 @@ For `install.sh` to complete successfully when run as a normal user, all of the 
 - **`git`** — getting the source in 1/9 (`git clone`/`git fetch`) itself depends on the `git` command, but if it is not
   installed, 0/9 runs `sudo apt-get install -y git` automatically (added 2026-08-20 during verification on a device with
   a fresh OS).
-- **Authentication to GitHub** — the repository is public, so the default HTTPS clone gets it without authentication.
+- **Authentication to GitHub** — the repository is private, so an HTTPS clone needs GitHub authentication. Register an SSH key on the Pi 5 and use `install_ssh.sh`, or clone on a PC and install with `deploy_to_pi5.sh`/`install_local.sh`.
   To clone via SSH, use `install_ssh.sh` (if the device has no SSH key, 0/9 generates one, shows the steps to register it
   on GitHub and exits; registering the public key requires browser operations and cannot be automated; after
   registering it, run the same command again to continue).
@@ -56,12 +56,12 @@ For `install.sh` to complete successfully when run as a normal user, all of the 
 ## How to Run
 
 ```sh
-./pi5/scripts/install.sh          # clone/fetch via HTTPS (default; no authentication needed since the repo is public)
+./pi5/scripts/install.sh          # clone/fetch via HTTPS (default; the repo is private, so GitHub authentication is needed)
 ./pi5/scripts/install_ssh.sh      # clone/fetch via SSH (if your SSH key is registered on GitHub)
 ./pi5/scripts/install_local.sh    # deploy from an existing local clone (no source download from GitHub)
 ```
 
-- `install_ssh.sh` is a thin wrapper that only sets `REPO_URL` to `git@github.com:kazushinjo/Shonan_Lite-RasPI5.git` and
+- `install_ssh.sh` is a thin wrapper that only sets `REPO_URL` to `git@github.com:kazushinjo/Shonan-V2_Lite-RasPI5.git` and
   then calls `install.sh`; all other processing is exactly the same.
 - `install_local.sh` sets `LOCAL_SOURCE_DIR` (by default the clone the script lives in) and calls `install.sh`. Instead
   of getting the source from GitHub, it copies the local clone to the install directory with `rsync`.
@@ -72,7 +72,7 @@ The behavior can be changed with environment variables.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `REPO_URL` | `https://github.com/kazushinjo/Shonan_Lite-RasPI5.git` | Where to clone from (`install_ssh.sh` changes it to the SSH URL) |
+| `REPO_URL` | `https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git` | Where to clone from (`install_ssh.sh` changes it to the SSH URL) |
 | `REPO_BRANCH` | `main` | Branch to clone/fetch |
 | `SHONAN_INSTALL_DIR` | `$HOME/shonan-pi5` | Install directory of the repository |
 | `LOCAL_SOURCE_DIR` | (unset) | When set, copies from this local clone instead of GitHub (set by `install_local.sh`) |
@@ -133,8 +133,8 @@ The following steps (0/9 to 9/9) are run on the Pi 5, which you can now connect 
     directly under `set -o pipefail` gives a false result, so the output is captured into a variable first and checked
     for "successfully authenticated" (a fix for a bug confirmed on the device).
 - If `REPO_URL` is HTTPS (default), it checks with `git ls-remote` that the repository is accessible. Since the
-  repository is public, it normally proceeds as is (only if it is not accessible does it suggest switching to the SSH
-  version and exit).
+  repository is private, it is not accessible without authentication; it then suggests switching to the SSH
+  version and exits.
 
 ## 1/9 Getting the Source
 
@@ -149,7 +149,7 @@ fi
 ```
 
 - It branches on whether `$INSTALL_DIR/.git` already exists (= whether it has already been cloned).
-  - If it does not exist: clone only `REPO_BRANCH` fresh from GitHub (`kazushinjo/Shonan_Lite-RasPI5`). This way, setup
+  - If it does not exist: clone only `REPO_BRANCH` fresh from GitHub (`kazushinjo/Shonan-V2_Lite-RasPI5`). This way, setup
     can be started simply by transferring this script alone to a brand-new Pi 5 (with `curl`, etc.) and running it.
   - If it exists: `fetch`, then `reset --hard` to **match the remote contents exactly**. Since `install.sh` is a
     deployment script, local changes such as files edited directly on the Pi 5 are not kept (move them elsewhere first

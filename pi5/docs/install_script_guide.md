@@ -41,7 +41,7 @@
 - **`git`** — 1/9のソース取得(`git clone`/`git fetch`)自体が`git`コマンドに
   依存するが、0/9で未導入なら`sudo apt-get install -y git`を自動実行する
   (2026-08-20、新規OS実機での検証で追加)。
-- **GitHubの認証** — リポジトリはpublicのため、既定のHTTPS cloneで認証なしに取得できる。
+- **GitHubの認証** — リポジトリは非公開(private)のため、HTTPS cloneにはGitHubの認証が要る。Pi5にSSH鍵を登録して`install_ssh.sh`を使うか、PCでcloneして`deploy_to_pi5.sh`/`install_local.sh`で入れる。
   SSHでcloneしたい場合は`install_ssh.sh`を使う(実機にSSH鍵が無ければ0/9が鍵を生成し、
   GitHubへの登録手順を表示して一旦終了する。公開鍵の登録はブラウザ操作が必要なため
   自動化できない。登録後に同じコマンドを再実行すれば続行する)。
@@ -61,12 +61,12 @@
 ## 実行方法
 
 ```sh
-./pi5/scripts/install.sh          # HTTPSでclone/fetch(既定。publicなので認証不要)
+./pi5/scripts/install.sh          # HTTPSでclone/fetch(既定。privateなのでGitHubの認証が要る)
 ./pi5/scripts/install_ssh.sh      # SSHでclone/fetch(GitHubにSSH鍵を登録済みの場合)
 ./pi5/scripts/install_local.sh    # 既にあるローカルクローンから展開(GitHubからのソース取得なし)
 ```
 
-- `install_ssh.sh`は`REPO_URL`を`git@github.com:kazushinjo/Shonan_Lite-RasPI5.git`に
+- `install_ssh.sh`は`REPO_URL`を`git@github.com:kazushinjo/Shonan-V2_Lite-RasPI5.git`に
   設定してから`install.sh`を呼び出すだけの薄いラッパーで、それ以外の処理は完全に同一である。
 - `install_local.sh`は`LOCAL_SOURCE_DIR`(既定はスクリプトが置かれたクローン自身)を
   設定して`install.sh`を呼び出す。GitHubからのソース取得の代わりに、ローカルの
@@ -79,7 +79,7 @@
 
 | 変数 | 既定値 | 効果 |
 | --- | --- | --- |
-| `REPO_URL` | `https://github.com/kazushinjo/Shonan_Lite-RasPI5.git` | clone元(`install_ssh.sh`はSSHのURLに変える) |
+| `REPO_URL` | `https://github.com/kazushinjo/Shonan-V2_Lite-RasPI5.git` | clone元(`install_ssh.sh`はSSHのURLに変える) |
 | `REPO_BRANCH` | `main` | clone/fetchするブランチ |
 | `SHONAN_INSTALL_DIR` | `$HOME/shonan-pi5` | リポジトリのインストール先ディレクトリ |
 | `LOCAL_SOURCE_DIR` | (未設定) | 設定するとGitHubの代わりにこのローカルクローンからコピーする(`install_local.sh`が設定する) |
@@ -142,7 +142,7 @@
     `set -o pipefail`下でパイプに直接つなぐと誤判定するため、出力を変数で受けてから
     "successfully authenticated"の有無で判定している(実機で確認した不具合の対策)。
 - `REPO_URL`がHTTPS(既定)の場合は、`git ls-remote`でアクセスできるかを確認する。
-  リポジトリはpublicのため通常はそのまま進む(アクセスできない場合のみSSH版への切替を案内して終了する)。
+  リポジトリはprivateのため、認証が無いとアクセスできず、SSH版への切替を案内して終了する。
 
 ## 1/9 ソース取得
 
@@ -157,7 +157,7 @@ fi
 ```
 
 - `$INSTALL_DIR/.git`が既に存在するか(＝既にcloneされているか)で分岐する。
-  - 存在しない場合: GitHub(`kazushinjo/Shonan_Lite-RasPI5`)から`REPO_BRANCH`だけを新規clone。
+  - 存在しない場合: GitHub(`kazushinjo/Shonan-V2_Lite-RasPI5`)から`REPO_BRANCH`だけを新規clone。
     これにより、このスクリプト単体を新品のPi5へ`curl`等で転送して実行するだけで
     セットアップを開始できる。
   - 存在する場合: `fetch`してから`reset --hard`で**リモートの内容に正確に合わせる**。
