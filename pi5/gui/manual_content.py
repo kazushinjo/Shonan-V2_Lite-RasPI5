@@ -84,7 +84,7 @@ MANUAL_SECTIONS = [
     ("6. 送信画面", [
         ("送信画面の見方", "上部に映像プレビュー、下部に送信状態、シンボルレート、音声レベル、通信統計を表示します。テストパターン選択時はカラーバーが表示されます。送信停止中は「送信開始」ボタンが表示されます。"),
         ("送信開始", "ホーム画面の「送信」は送信画面を開くだけです。送信を開始するには、送信画面の「送信開始」を押します。"),
-        ("送信停止", "送信中に同じ位置へ表示される「送信停止」を押します。停止表示を確認してから周波数・出力・配線を変更します。"),
+        ("送信停止", "送信中に同じ位置へ表示される「送信停止」を押します。送信停止ではPlutoの送信LOも止めるので、電波はすぐ止まります(Pluto+のFPGA版などはPlutoの中の送信プログラムが動き続けるため。次の「送信開始」で入れ直します)。停止表示を確認してから周波数・出力・配線を変更します。"),
         ("画面移動", "設定画面でオンデバイス復調をONにしている場合のみ「受信画面へ」が表示されます。常に「設定」「ホームへ戻る」が利用できます。"),
     ]),
     ("7. 受信画面", [
@@ -226,7 +226,7 @@ MANUAL_SECTIONS_EN = [
     ("6. Transmit Screen", [
         ("Reading the TX screen", "The video preview is at the top, and TX state, symbol rate, audio level and communication statistics are at the bottom. Color bars are shown when the test pattern is selected. The \"Start TX\" button is shown while TX is stopped."),
         ("Starting TX", "\"Transmit\" on the Home screen only opens the TX screen. To start transmitting, press \"Start TX\" on the TX screen."),
-        ("Stopping TX", "While transmitting, press \"Stop TX\", shown in the same position. Check the stopped state before changing the frequency, power or wiring."),
+        ("Stopping TX", "While transmitting, press \"Stop TX\", shown in the same position. Stopping TX also powers down the Pluto's TX LO, so the RF stops at once (on the Pluto+ FPGA firmware and others the transmit program inside the Pluto keeps running; the next \"Start TX\" powers the LO up again). Check the stopped state before changing the frequency, power or wiring."),
         ("Screen navigation", "\"Go to RX\" is shown only when on-device demodulation is ON in Settings. \"Settings\" and \"Back to Home\" are always available."),
     ]),
     ("7. Receive Screen", [
